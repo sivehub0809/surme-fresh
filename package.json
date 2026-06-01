@@ -1,0 +1,13 @@
+{
+  "name": "surme-website",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "npx serve .",
+    "check": "node -e \"const fs=require('fs'); ['index.html','styles.css','script.js','vercel.json','supabase-fresh.sql','api/config.js','api/admin/persona.js','api/user/onboarding.js','api/telegram/create-link.js','api/google/start.js','api/google/callback.js','api/public/telegram/webhook.js'].forEach(f=>{if(!fs.existsSync(f)) throw new Error(f+' missing')}); console.log('SurMe website files OK')\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,223 @@
+const TELEGRAM_API = 'https://api.telegram.org/bot'
+const crypto = require('node:crypto')
+const { supabaseFetch } = require('../../_lib/supabase')
+
+module.exports = async function webhook(req, res) {
+  if (req.method === 'GET') {
+    return res.status(200).json({ ok: true, service: 'surme-telegram-webhook' })
+  }
+
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'GET, POST')
+    return res.status(405).json({ ok: false, error: 'Method not allowed' })
+  }
+
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    return res.status(500).json({ ok: false, error: 'TELEGRAM_BOT_TOKEN is not configured' })
+  }
+
+  const configuredSecret = process.env.TELEGRAM_WEBHOOK_SECRET
+  const receivedSecret = req.headers['x-telegram-bot-api-secret-token']
+  if (configuredSecret && receivedSecret !== configuredSecret) {
+    return res.status(401).json({ ok: false, error: 'Invalid Telegram webhook secret' })
+  }
+
+  const update = req.body || {}
+  const message = update.message
+  const chatId = message && message.chat && message.chat.id
+  const text = message && typeof message.text === 'string' ? message.text.trim() : ''
+
+  if (!chatId || !text) {
+    return res.status(200).json({ ok: true, ignored: true })
+  }
+
+  try {
+    const linked = await resolveTelegramUser(chatId, message.from, text)
+    if (!linked.ok) {
+      await sendTelegramMessage(chatId, linked.message)
+      return res.status(200).json({ ok: true, linked: false })
+    }
+
+    const reply = await buildReply(text, linked.user_id)
+    await saveTelegramTurn(linked.user_id, chatId, text, reply)
+    await sendTelegramMessage(chatId, reply)
+    return res.status(200).json({ ok: true })
+  } catch (error) {
+    console.error(error)
+    try {
+      await sendTelegramMessage(chatId, 'SurMe is online, but I hit a setup issue. Please check the Vercel function logs.')
+    } catch (sendError) {
+      console.error(sendError)
+    }
+    return res.status(500).json({ ok: false, error: 'Webhook handler failed' })
+  }
+}
+
+async function resolveTelegramUser(chatId, from, text) {
+  const existingResponse = await supabaseFetch(`/rest/v1/telegram_chats?telegram_chat_id=eq.${chatId}&select=user_id`, { service: true })
+  const existingRows = existingResponse.ok ? await existingResponse.json() : []
+  if (existingRows[0]?.user_id) return { ok: true, user_id: existingRows[0].user_id }
+
+  const token = text.startsWith('/start') ? text.replace('/start', '').trim() : text.trim()
+  if (!token || token.length < 12) {
+    return {
+      ok: false,
+      message:
+        'Please connect SurMe from the Web App first. Sign in, finish onboarding, connect Google Calendar, then copy the 15-minute Telegram key into this chat.',
+    }
+  }
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+  const codeResponse = await supabaseFetch(`/rest/v1/telegram_link_codes?token_hash=eq.${tokenHash}&select=*`, { service: true })
+  const rows = codeResponse.ok ? await codeResponse.json() : []
+  const code = rows[0]
+  if (!code || code.used_at || new Date(code.expires_at).getTime() < Date.now()) {
+    return { ok: false, message: 'That Telegram key is invalid or expired. Please generate a new one in the SurMe Web App.' }
+  }
+
+  await supabaseFetch('/rest/v1/telegram_chats', {
+    method: 'POST',
+    service: true,
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({
+      telegram_chat_id: chatId,
+      telegram_user_id: from?.id || null,
+      user_id: code.user_id,
+      display_name: from?.username || from?.first_name || null,
+      last_message_at: new Date().toISOString(),
+    }),
+  })
+
+  await supabaseFetch('/rest/v1/user_profiles', {
+    method: 'POST',
+    service: true,
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({ user_id: code.user_id, telegram_chat_id: chatId }),
+  })
+
+  await supabaseFetch(`/rest/v1/telegram_link_codes?id=eq.${code.id}`, {
+    method: 'PATCH',
+    service: true,
+    body: JSON.stringify({ used_at: new Date().toISOString(), telegram_chat_id: chatId }),
+  })
+
+  return { ok: false, message: 'Telegram is connected to your SurMe account. Send me a task and I will help.' }
+}
+
+async function buildReply(text, userId) {
+  if (text.startsWith('/start')) {
+    return [
+      'SurMe is connected.',
+      '',
+      'Send me a task like:',
+      '- Schedule a meeting tomorrow at 2 PM',
+      '- Draft an email follow-up',
+      '- Research flight options for next week',
+    ].join('\n')
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    return [
+      'I received it.',
+      '',
+      `Intent: ${text}`,
+      '',
+      'AI replies are not enabled yet. Add OPENAI_API_KEY in Vercel to turn this into a full assistant response.',
+    ].join('\n')
+  }
+
+  const [persona, context] = await Promise.all([loadPersona(), loadUserContext(userId)])
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: process.env.AI_MODEL || 'gpt-5',
+      messages: [
+        {
+          role: 'system',
+          content: `${persona}\n\nUser context:\n${JSON.stringify(context)}`,
+        },
+        { role: 'user', content: text },
+      ],
+    }),
+  })
+
+  if (!response.ok) {
+    const detail = await response.text()
+    throw new Error(`OpenAI request failed: ${response.status} ${detail}`)
+  }
+
+  const json = await response.json()
+  return json.choices && json.choices[0] && json.choices[0].message
+    ? json.choices[0].message.content || 'Done.'
+    : 'Done.'
+}
+
+async function loadUserContext(userId) {
+  if (!userId) return {}
+  const [profileResponse, memoryResponse] = await Promise.all([
+    supabaseFetch(`/rest/v1/user_profiles?user_id=eq.${userId}&select=*`, { service: true }),
+    supabaseFetch(`/rest/v1/user_memories?user_id=eq.${userId}&select=category,fact,created_at&order=created_at.desc&limit=20`, { service: true }),
+  ])
+  const profiles = profileResponse.ok ? await profileResponse.json() : []
+  const memories = memoryResponse.ok ? await memoryResponse.json() : []
+  return { profile: profiles[0] || null, memories }
+}
+
+async function saveTelegramTurn(userId, chatId, userText, assistantText) {
+  const conversationResponse = await supabaseFetch('/rest/v1/conversations', {
+    method: 'POST',
+    service: true,
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ user_id: userId, telegram_chat_id: chatId, source: 'telegram', title: userText.slice(0, 60) }),
+  })
+  const conversations = conversationResponse.ok ? await conversationResponse.json() : []
+  const conversationId = conversations[0]?.id
+  if (!conversationId) return
+  await supabaseFetch('/rest/v1/messages', {
+    method: 'POST',
+    service: true,
+    body: JSON.stringify([
+      { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'user', content: userText },
+      { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'assistant', content: assistantText },
+    ]),
+  })
+}
+
+async function loadPersona() {
+  const fallback =
+    process.env.AI_PERSONA ||
+    'You are SurMe, a personal AI assistant powered by Nilaamio. Help with scheduling, travel, email, and research. Be concise and confirm before sensitive actions.'
+
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return fallback
+
+  const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/surme_settings?id=eq.1&select=system_prompt`, {
+    headers: {
+      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+  })
+
+  if (!response.ok) return fallback
+  const rows = await response.json()
+  return rows?.[0]?.system_prompt || fallback
+}
+
+async function sendTelegramMessage(chatId, text) {
+  const response = await fetch(`${TELEGRAM_API}${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      disable_web_page_preview: true,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Telegram sendMessage failed: ${response.status} ${await response.text()}`)
+  }
+}
