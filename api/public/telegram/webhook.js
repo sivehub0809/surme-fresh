@@ -157,6 +157,7 @@ async function buildReply(text, chat, userId) {
       prompt,
       temperature: 0.55,
       maxOutputTokens: 320,
+      thinkingBudget: 0,
       timeoutMs: 10000,
     })
     return clampTelegramMessage(reply || buildHelpfulFallbackReply(text))

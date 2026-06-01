@@ -4,7 +4,15 @@ function env(name, fallback = '') {
   return String(process.env[name] || fallback).trim()
 }
 
-async function generateGeminiText({ prompt, systemInstruction, model, temperature = 0.5, maxOutputTokens = 512, timeoutMs = 10000 }) {
+async function generateGeminiText({
+  prompt,
+  systemInstruction,
+  model,
+  temperature = 0.5,
+  maxOutputTokens = 512,
+  thinkingBudget = 0,
+  timeoutMs = 10000,
+}) {
   const apiKey = env('GOOGLE_GEMINI_API_KEY')
   if (!apiKey) {
     throw new Error('GOOGLE_GEMINI_API_KEY is required')
@@ -38,6 +46,9 @@ async function generateGeminiText({ prompt, systemInstruction, model, temperatur
         temperature,
         topP: 0.9,
         maxOutputTokens,
+        thinkingConfig: {
+          thinkingBudget,
+        },
       },
     }),
   })

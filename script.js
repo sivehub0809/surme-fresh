@@ -230,6 +230,7 @@ adminModal.addEventListener('click', async (event) => {
     const action = target.dataset.adminAction
     if (action === 'refresh') return await openAdminPanel(true)
     if (action === 'test-behavior') return await runBehaviorTest()
+    if (action === 'test-gemini') return await runGeminiSmokeTest()
     return
   }
 
@@ -517,6 +518,27 @@ async function runBehaviorTest() {
   showToast('Persona test complete.')
 }
 
+async function runGeminiSmokeTest() {
+  const token = await getAccessToken()
+  if (!token) return showToast('Please sign in as admin first.')
+  const message = adminModal.querySelector('[data-behavior-test-message]').value.trim()
+  const response = await fetch('/api/admin/gemini-test', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message,
+    }),
+  })
+  const json = await response.json()
+  const output = adminModal.querySelector('[data-behavior-test-output]')
+  if (!response.ok) return showToast(json.error || 'Gemini test failed.')
+  output.textContent = json.reply || 'Done.'
+  showToast('Gemini smoke test complete.')
+}
+
 async function runUserAction(action, userId) {
   const token = await getAccessToken()
   if (!token) return showToast('Please sign in as admin first.')
@@ -684,6 +706,7 @@ function renderAdminConsole(data) {
             </label>
             <div class="admin-actions">
               <button class="button secondary" type="button" data-admin-action="test-behavior">Persona test</button>
+              <button class="button secondary" type="button" data-admin-action="test-gemini">Gemini test</button>
               <button class="button primary" type="submit">Save behavior</button>
             </div>
           </form>

@@ -261,6 +261,7 @@ async function previewBehavior(message, body) {
     prompt: `${prompt}\n\nUser message:\n${message}`,
     temperature: 0.3,
     maxOutputTokens: 256,
+    thinkingBudget: 0,
   })
 }
 

@@ -87,6 +87,7 @@ async function structurePersona(draft) {
       ].join('\n'),
       temperature: 0.3,
       maxOutputTokens: 768,
+      thinkingBudget: 0,
     })
   } catch (error) {
     console.error('Persona structure failed, falling back to default prompt:', error)
