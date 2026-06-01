@@ -164,11 +164,19 @@ function buildGeminiPrompt({ text, persona, context }) {
   ].join('\n')
 }
 
-function buildHelpfulFallbackReply(text, persona = '') {
+function buildHelpfulFallbackReply(text) {
   const task = String(text || '').trim()
-  if (!task) return 'Iâ€™m here. Send me the task again and Iâ€™ll handle it.'
+  if (!task) return "I’m here. Send me the task again and I’ll handle it."
 
   const lower = task.toLowerCase()
+
+  if (['hi', 'hello', 'hey', 'yo', 'sup', 'good morning', 'good afternoon', 'good evening'].some((greeting) => lower === greeting || lower.startsWith(`${greeting} `))) {
+    return 'Hey. I’m here and ready. Tell me what you want done.'
+  }
+
+  if (lower === 'yes' || lower === 'yep' || lower === 'sure' || lower === 'okay' || lower === 'ok' || lower === 'alright') {
+    return 'Got it. Send me the exact time, timezone, and who should be invited, and I’ll help set it up.'
+  }
 
   if (lower.includes('physics')) {
     return [
@@ -186,15 +194,29 @@ function buildHelpfulFallbackReply(text, persona = '') {
       '- use short review sessions',
       '- test yourself right after studying',
       '',
-      'Tell me the topic and Iâ€™ll make you a quick study plan.',
+      'Tell me the topic and I’ll make you a quick study plan.',
+    ].join('\n')
+  }
+
+  if (lower.includes('learn') || lower.includes('study')) {
+    return [
+      'Fast learning works best when you keep it small and active:',
+      '- pick one topic',
+      '- learn the basics first',
+      '- test yourself immediately',
+      '- repeat in short sessions',
+      '',
+      'If you want, I can turn your topic into a quick study plan.',
     ].join('\n')
   }
 
   if (lower.includes('schedule') || lower.includes('meeting') || lower.includes('calendar')) {
     return [
-      'I can help set that up.',
+      'That sounds close.',
       '',
-      'Please send me the exact date, time, timezone, and who should attend.',
+      'If you want me to set the meeting, send the exact date, time, timezone, and who should attend.',
+      '',
+      'Example: Tuesday at 2 PM, Asia/Bangkok, Tim.',
     ].join('\n')
   }
 
@@ -202,14 +224,14 @@ function buildHelpfulFallbackReply(text, persona = '') {
     return [
       'I can help with that.',
       '',
-      'Send me the recipient, subject, and the tone you want, and Iâ€™ll draft it.',
+      'Send me the recipient, subject, and the tone you want, and I’ll draft it.',
     ].join('\n')
   }
 
   return [
     'I got your message.',
     '',
-    'Tell me a bit more about what you want me to do, and Iâ€™ll help step by step.',
+    'Tell me the result you want, and I’ll help step by step.',
   ].join('\n')
 }
 
@@ -290,3 +312,5 @@ function clampTelegramMessage(text) {
   if (value.length <= MAX_TELEGRAM_MESSAGE) return value
   return `${value.slice(0, MAX_TELEGRAM_MESSAGE - 3).trimEnd()}...`
 }
+
+

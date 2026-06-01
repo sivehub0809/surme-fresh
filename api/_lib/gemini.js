@@ -4,19 +4,22 @@ function env(name, fallback = '') {
   return String(process.env[name] || fallback).trim()
 }
 
-async function generateGeminiText({ prompt, model, temperature = 0.5, maxOutputTokens = 512 }) {
+async function generateGeminiText({ prompt, model, temperature = 0.5, maxOutputTokens = 512, timeoutMs = 6000 }) {
   const apiKey = env('GOOGLE_GEMINI_API_KEY')
   if (!apiKey) {
     throw new Error('GOOGLE_GEMINI_API_KEY is required')
   }
 
   const selectedModel = encodeURIComponent(model || env('AI_MODEL', DEFAULT_MODEL))
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(new Error('Gemini request timed out')), timeoutMs)
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': apiKey,
     },
+    signal: controller.signal,
     body: JSON.stringify({
       contents: [
         {
@@ -32,16 +35,20 @@ async function generateGeminiText({ prompt, model, temperature = 0.5, maxOutputT
     }),
   })
 
-  const raw = await response.text()
-  if (!response.ok) {
-    throw new Error(`Gemini request failed: ${response.status} ${raw}`)
-  }
+  try {
+    const raw = await response.text()
+    if (!response.ok) {
+      throw new Error(`Gemini request failed: ${response.status} ${raw}`)
+    }
 
-  const json = JSON.parse(raw)
-  const parts = json?.candidates?.[0]?.content?.parts || []
-  const text = parts.map((part) => part.text || '').join('').trim()
-  if (!text) throw new Error('Gemini returned an empty response')
-  return text
+    const json = JSON.parse(raw)
+    const parts = json?.candidates?.[0]?.content?.parts || []
+    const text = parts.map((part) => part.text || '').join('').trim()
+    if (!text) throw new Error('Gemini returned an empty response')
+    return text
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 module.exports = {
