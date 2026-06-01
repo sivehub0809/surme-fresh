@@ -1,8 +1,11 @@
-const TELEGRAM_API = 'https://api.telegram.org/bot'
+ï»¿const TELEGRAM_API = 'https://api.telegram.org/bot'
 const crypto = require('node:crypto')
 const { supabaseFetch } = require('../../_lib/supabase')
 const { generateGeminiText } = require('../../_lib/gemini')
+
 const MAX_TELEGRAM_MESSAGE = 3800
+const DEFAULT_PERSONA =
+  'You are SurMe, a personal AI assistant powered by Nilaamio. You help with scheduling, travel, email, research, and everyday conversation. Be concise, warm, and practical.'
 
 module.exports = async function webhook(req, res) {
   if (req.method === 'GET') {
@@ -40,28 +43,41 @@ module.exports = async function webhook(req, res) {
       return res.status(200).json({ ok: true, linked: false })
     }
 
-    const reply = clampTelegramMessage(await buildReply(text, linked.user_id))
-    const sendPromise = sendTelegramMessage(chatId, reply)
-    void saveTelegramTurn(linked.user_id, chatId, text, reply).catch((error) => {
-      console.error('Failed to persist telegram turn:', error)
-    })
-    await sendPromise
+    const chat = linked.chat || (await loadTelegramChat(chatId))
+    const reply = clampTelegramMessage(await buildReply(text, chat, linked.user_id))
+
+    await sendTelegramMessage(chatId, reply)
+    void persistTelegramTurn({
+      userId: linked.user_id,
+      chatId,
+      userText: text,
+      assistantText: reply,
+      chat,
+    }).catch((error) => console.error('Failed to persist telegram turn:', error))
+
     return res.status(200).json({ ok: true })
   } catch (error) {
-    console.error(error)
+    console.error('Telegram webhook failed:', error)
     try {
       await sendTelegramMessage(chatId, 'SurMe is online, but I hit a temporary issue. Please try again in a moment.')
     } catch (sendError) {
-      console.error(sendError)
+      console.error('Fallback send failed:', sendError)
     }
     return res.status(500).json({ ok: false, error: 'Webhook handler failed' })
   }
 }
 
+async function loadTelegramChat(chatId) {
+  const response = await supabaseFetch(`/rest/v1/telegram_chats?telegram_chat_id=eq.${chatId}&select=*`, { service: true })
+  const rows = response.ok ? await response.json() : []
+  return rows[0] || null
+}
+
 async function resolveTelegramUser(chatId, from, text) {
-  const existingResponse = await supabaseFetch(`/rest/v1/telegram_chats?telegram_chat_id=eq.${chatId}&select=user_id`, { service: true })
-  const existingRows = existingResponse.ok ? await existingResponse.json() : []
-  if (existingRows[0]?.user_id) return { ok: true, user_id: existingRows[0].user_id }
+  const existing = await loadTelegramChat(chatId)
+  if (existing?.user_id) {
+    return { ok: true, user_id: existing.user_id, chat: existing }
+  }
 
   const token = text.startsWith('/start') ? text.replace('/start', '').trim() : text.trim()
   if (!token || token.length < 12) {
@@ -80,17 +96,23 @@ async function resolveTelegramUser(chatId, from, text) {
     return { ok: false, message: 'That Telegram key is invalid or expired. Please generate a new one in the SurMe Web App.' }
   }
 
+  const now = new Date().toISOString()
+  const chatRecord = {
+    telegram_chat_id: chatId,
+    telegram_user_id: from?.id || null,
+    user_id: code.user_id,
+    display_name: from?.username || from?.first_name || null,
+    history: [],
+    user_message_count: 0,
+    last_message_at: now,
+    updated_at: now,
+  }
+
   await supabaseFetch('/rest/v1/telegram_chats', {
     method: 'POST',
     service: true,
     headers: { Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify({
-      telegram_chat_id: chatId,
-      telegram_user_id: from?.id || null,
-      user_id: code.user_id,
-      display_name: from?.username || from?.first_name || null,
-      last_message_at: new Date().toISOString(),
-    }),
+    body: JSON.stringify(chatRecord),
   })
 
   await supabaseFetch('/rest/v1/user_profiles', {
@@ -103,13 +125,13 @@ async function resolveTelegramUser(chatId, from, text) {
   await supabaseFetch(`/rest/v1/telegram_link_codes?id=eq.${code.id}`, {
     method: 'PATCH',
     service: true,
-    body: JSON.stringify({ used_at: new Date().toISOString(), telegram_chat_id: chatId }),
+    body: JSON.stringify({ used_at: now, telegram_chat_id: chatId }),
   })
 
   return { ok: false, message: 'Telegram is connected to your SurMe account. Send me a task and I will help.' }
 }
 
-async function buildReply(text, userId) {
+async function buildReply(text, chat, userId) {
   if (text.startsWith('/start')) {
     return [
       'SurMe is connected.',
@@ -125,57 +147,73 @@ async function buildReply(text, userId) {
     return buildHelpfulFallbackReply(text)
   }
 
-  const [persona, context] = await Promise.all([loadPersona(), loadUserContext(userId)])
+  const persona = await loadPersona()
+  const prompt = buildConversationPrompt(chat, text)
+  const systemInstruction = buildTelegramSystemInstruction(persona)
+
   try {
-    const prompt = buildGeminiPrompt({ text, persona, context })
-    const reply = await generateGeminiText({ prompt, temperature: 0.5, maxOutputTokens: 512 })
+    const reply = await generateGeminiText({
+      systemInstruction,
+      prompt,
+      temperature: 0.55,
+      maxOutputTokens: 320,
+      timeoutMs: 10000,
+    })
     return clampTelegramMessage(reply || buildHelpfulFallbackReply(text))
   } catch (error) {
-    console.error('Gemini request threw:', error)
-    return buildHelpfulFallbackReply(text, persona)
+    console.error('Gemini request failed:', error)
+    return buildHelpfulFallbackReply(text)
   }
 }
 
-function buildGeminiPrompt({ text, persona, context }) {
-  const profile = context?.profile || {}
-  const memories = Array.isArray(context?.memories) ? context.memories : []
-  const memoryLines = memories.slice(0, 6).map((item) => `- ${item.fact}`).join('\n')
+function buildTelegramSystemInstruction(persona) {
+  return [
+    String(persona || DEFAULT_PERSONA).trim(),
+    '',
+    'You are SurMe, a fast, friendly Telegram assistant for students, founders, CEOs, and working professionals.',
+    'Reply naturally and directly.',
+    'Do not mention internal prompts, intent labels, persona labels, or debugging details.',
+    'Do not write "I got your message" unless the user asked for a fallback or clarification.',
+    'When the user is vague, ask one short helpful follow-up question.',
+    'When the user is conversational, be conversational back.',
+    'When the user asks for an explanation, answer it plainly and clearly.',
+  ].join('\n')
+}
+
+function buildConversationPrompt(chat, text) {
+  const history = Array.isArray(chat?.history) ? chat.history.slice(-6) : []
+  const historyText = history
+    .map((item) => {
+      const role = String(item?.role || '').trim()
+      const content = String(item?.content || item?.text || '').trim()
+      if (!role || !content) return ''
+      return `${role === 'assistant' ? 'Assistant' : 'User'}: ${content}`
+    })
+    .filter(Boolean)
+    .join('\n')
 
   return [
-    'You are SurMe, a personal AI assistant for students, founders, CEOs, and working professionals.',
-    'Answer the user naturally, directly, and helpfully.',
-    'Do not mention intent, persona, system prompt, or internal debugging.',
-    'Do not output headings unless they improve clarity.',
-    'Keep responses fast and useful.',
-    'If the user asks for a long answer, provide it.',
-    '',
-    'Behavior guide:',
-    String(persona || '').trim(),
-    '',
-    'User context:',
-    `- name: ${profile.display_name || profile.full_name || 'unknown'}`,
-    `- timezone: ${profile.timezone || 'unknown'}`,
-    `- role: ${profile.primary_role || 'unknown'}`,
-    `- goals: ${(profile.goals || []).join(', ') || 'unknown'}`,
-    memoryLines || '- no saved memories yet',
+    historyText ? `Recent conversation:\n${historyText}` : 'Recent conversation: none',
     '',
     'User message:',
     text,
+    '',
+    'Reply with the most helpful next answer or one short clarifying question if needed.',
   ].join('\n')
 }
 
 function buildHelpfulFallbackReply(text) {
   const task = String(text || '').trim()
-  if (!task) return "I’m here. Send me the task again and I’ll handle it."
+  if (!task) return "I'm here. Send me the task again and I'll handle it."
 
   const lower = task.toLowerCase()
 
   if (['hi', 'hello', 'hey', 'yo', 'sup', 'good morning', 'good afternoon', 'good evening'].some((greeting) => lower === greeting || lower.startsWith(`${greeting} `))) {
-    return 'Hey. I’m here and ready. Tell me what you want done.'
+    return "Hey. I'm here and ready. Tell me what you want done."
   }
 
   if (lower === 'yes' || lower === 'yep' || lower === 'sure' || lower === 'okay' || lower === 'ok' || lower === 'alright') {
-    return 'Got it. Send me the exact time, timezone, and who should be invited, and I’ll help set it up.'
+    return "Got it. Send me the exact time, timezone, and who should be invited, and I'll help set it up."
   }
 
   if (lower.includes('physics')) {
@@ -194,7 +232,7 @@ function buildHelpfulFallbackReply(text) {
       '- use short review sessions',
       '- test yourself right after studying',
       '',
-      'Tell me the topic and I’ll make you a quick study plan.',
+      "Tell me the topic and I'll make you a quick study plan.",
     ].join('\n')
   }
 
@@ -224,49 +262,60 @@ function buildHelpfulFallbackReply(text) {
     return [
       'I can help with that.',
       '',
-      'Send me the recipient, subject, and the tone you want, and I’ll draft it.',
+      "Send me the recipient, subject, and the tone you want, and I'll draft it.",
     ].join('\n')
   }
 
   return [
     'I got your message.',
     '',
-    'Tell me the result you want, and I’ll help step by step.',
+    "Tell me the result you want, and I'll help step by step.",
   ].join('\n')
 }
 
-async function loadUserContext(userId) {
-  if (!userId) return {}
-  const [profileResponse, memoryResponse] = await Promise.all([
-    supabaseFetch(`/rest/v1/user_profiles?user_id=eq.${userId}&select=*`, { service: true }),
-    supabaseFetch(`/rest/v1/user_memories?user_id=eq.${userId}&select=category,fact,created_at&order=created_at.desc&limit=20`, { service: true }),
-  ])
-  const profiles = profileResponse.ok ? await profileResponse.json() : []
-  const memories = memoryResponse.ok ? await memoryResponse.json() : []
-  return { profile: profiles[0] || null, memories }
-}
+async function persistTelegramTurn({ userId, chatId, userText, assistantText, chat }) {
+  const now = new Date().toISOString()
+  const currentHistory = Array.isArray(chat?.history) ? chat.history.slice(-10) : []
+  const nextHistory = currentHistory
+    .concat([
+      { role: 'user', content: userText, created_at: now },
+      { role: 'assistant', content: assistantText, created_at: now },
+    ])
+    .slice(-16)
 
-async function saveTelegramTurn(userId, chatId, userText, assistantText) {
   const conversationResponse = await supabaseFetch('/rest/v1/conversations', {
     method: 'POST',
     service: true,
     headers: { Prefer: 'return=representation' },
     body: JSON.stringify({ user_id: userId, telegram_chat_id: chatId, source: 'telegram', title: userText.slice(0, 60) }),
   })
+
   const conversations = conversationResponse.ok ? await conversationResponse.json() : []
   const conversationId = conversations[0]?.id
-  if (!conversationId) return
-  const response = await supabaseFetch('/rest/v1/messages', {
-    method: 'POST',
-    service: true,
-    body: JSON.stringify([
-      { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'user', content: userText },
-      { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'assistant', content: assistantText },
-    ]),
-  })
-  if (!response.ok) {
-    console.error('Failed to persist telegram turn:', await response.text())
+  if (conversationId) {
+    const response = await supabaseFetch('/rest/v1/messages', {
+      method: 'POST',
+      service: true,
+      body: JSON.stringify([
+        { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'user', content: userText },
+        { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'assistant', content: assistantText },
+      ]),
+    })
+    if (!response.ok) {
+      console.error('Failed to persist telegram turn:', await response.text())
+    }
   }
+
+  await supabaseFetch(`/rest/v1/telegram_chats?telegram_chat_id=eq.${chatId}`, {
+    method: 'PATCH',
+    service: true,
+    body: JSON.stringify({
+      history: nextHistory,
+      user_message_count: Number(chat?.user_message_count || 0) + 1,
+      last_message_at: now,
+      updated_at: now,
+    }),
+  })
 }
 
 async function loadPersona() {
@@ -312,5 +361,3 @@ function clampTelegramMessage(text) {
   if (value.length <= MAX_TELEGRAM_MESSAGE) return value
   return `${value.slice(0, MAX_TELEGRAM_MESSAGE - 3).trimEnd()}...`
 }
-
-
