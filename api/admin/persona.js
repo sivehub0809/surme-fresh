@@ -79,13 +79,13 @@ async function structurePersona(draft) {
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.AI_MODEL || GEMINI_DEFAULT_MODEL)}:generateContent`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': process.env.GOOGLE_GEMINI_API_KEY,
-      },
-      body: JSON.stringify({
-        system_instruction: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': process.env.GOOGLE_GEMINI_API_KEY,
+        },
+        body: JSON.stringify({
+        systemInstruction: {
           parts: [
             {
               text: 'Turn the admin instruction into a production system prompt for a personal AI assistant. Keep it specific, structured, safe, and concise.',
@@ -94,9 +94,15 @@ async function structurePersona(draft) {
         },
         contents: [
           {
+            role: 'user',
             parts: [{ text: cleanDraft }],
           },
         ],
+        generationConfig: {
+          temperature: 0.3,
+          topP: 0.9,
+          maxOutputTokens: 768,
+        },
       }),
     })
 
