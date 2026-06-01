@@ -18,7 +18,9 @@ async function generateGeminiText({
     throw new Error('GOOGLE_GEMINI_API_KEY is required')
   }
 
-  const selectedModel = encodeURIComponent(model || env('AI_MODEL', DEFAULT_MODEL))
+  const configuredModel = String(model || env('AI_MODEL', DEFAULT_MODEL)).trim()
+  const safeModel = configuredModel.toLowerCase().startsWith('gemini-') ? configuredModel : DEFAULT_MODEL
+  const selectedModel = encodeURIComponent(safeModel)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(new Error('Gemini request timed out')), timeoutMs)
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`, {

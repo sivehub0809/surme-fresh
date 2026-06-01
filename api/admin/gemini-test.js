@@ -1,5 +1,6 @@
 const { requireAdmin } = require('../_lib/supabase')
 const { generateGeminiText } = require('../_lib/gemini')
+const DEFAULT_MODEL = 'gemini-2.5-flash'
 
 module.exports = async function geminiTest(req, res) {
   const auth = await requireAdmin(req, res)
@@ -25,12 +26,17 @@ module.exports = async function geminiTest(req, res) {
       maxOutputTokens: 128,
       timeoutMs: 10000,
     })
-    return res.status(200).json({ ok: true, reply })
+    return res.status(200).json({
+      ok: true,
+      reply,
+      model: String(process.env.AI_MODEL || DEFAULT_MODEL).trim(),
+    })
   } catch (error) {
     console.error('Gemini test failed:', error)
     return res.status(500).json({
       ok: false,
       error: error.message || 'Gemini test failed',
+      model: String(process.env.AI_MODEL || DEFAULT_MODEL).trim(),
     })
   }
 }
