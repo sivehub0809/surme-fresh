@@ -1,7 +1,7 @@
 const ADMIN_EMAIL = 'nilaademo@gmail.com'
 const DEFAULT_PROMPT =
   'You are SurMe, a personal AI assistant powered by Nilaamio. Help with scheduling, travel, email, and research. Be concise, friendly, and confirm before sensitive actions.'
-const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash'
+const { generateGeminiText } = require('../_lib/gemini')
 
 module.exports = async function persona(req, res) {
   const auth = await requireAdmin(req)
@@ -78,37 +78,16 @@ async function structurePersona(draft) {
   }
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.AI_MODEL || GEMINI_DEFAULT_MODEL)}:generateContent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': process.env.GOOGLE_GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-        systemInstruction: {
-          parts: [
-            {
-              text: 'Turn the admin instruction into a production system prompt for a personal AI assistant. Keep it specific, structured, safe, and concise.',
-            },
-          ],
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: cleanDraft }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.3,
-          topP: 0.9,
-          maxOutputTokens: 768,
-        },
-      }),
+    return await generateGeminiText({
+      prompt: [
+        'Turn the admin instruction into a production system prompt for a personal AI assistant.',
+        'Keep it specific, structured, safe, concise, and ready to paste into the assistant settings.',
+        '',
+        cleanDraft,
+      ].join('\n'),
+      temperature: 0.3,
+      maxOutputTokens: 768,
     })
-
-    if (!response.ok) throw new Error(`Gemini persona structure failed: ${response.status} ${await response.text()}`)
-    const json = await response.json()
-    return json.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || DEFAULT_PROMPT
   } catch (error) {
     console.error('Persona structure failed, falling back to default prompt:', error)
     return [

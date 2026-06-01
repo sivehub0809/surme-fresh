@@ -1,5 +1,6 @@
 const crypto = require('node:crypto')
 const { requireAdmin, supabaseFetch } = require('../_lib/supabase')
+const { generateGeminiText } = require('../_lib/gemini')
 
 const DEFAULT_PERSONA =
   'You are SurMe, a personal AI assistant powered by Nilaamio. You remember the user, execute useful actions, and confirm before irreversible or sensitive actions.'
@@ -256,20 +257,11 @@ async function previewBehavior(message, body) {
     return `Gemini is not configured yet.\n\n${prompt}\n\nUser message: ${message}`
   }
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.AI_MODEL || 'gemini-2.5-flash')}:generateContent?key=${encodeURIComponent(process.env.GOOGLE_GEMINI_API_KEY)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: [{ text: prompt }],
-      },
-      contents: [{ parts: [{ text: message }] }],
-    }),
+  return await generateGeminiText({
+    prompt: `${prompt}\n\nUser message:\n${message}`,
+    temperature: 0.3,
+    maxOutputTokens: 256,
   })
-
-  if (!response.ok) throw new Error(`Gemini preview failed: ${response.status} ${await response.text()}`)
-  const json = await response.json()
-  return json.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || 'Done.'
 }
 
 async function readSettings() {
