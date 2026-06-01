@@ -41,8 +41,11 @@ module.exports = async function webhook(req, res) {
     }
 
     const reply = clampTelegramMessage(await buildReply(text, linked.user_id))
-    await saveTelegramTurn(linked.user_id, chatId, text, reply)
-    await sendTelegramMessage(chatId, reply)
+    const sendPromise = sendTelegramMessage(chatId, reply)
+    void saveTelegramTurn(linked.user_id, chatId, text, reply).catch((error) => {
+      console.error('Failed to persist telegram turn:', error)
+    })
+    await sendPromise
     return res.status(200).json({ ok: true })
   } catch (error) {
     console.error(error)
@@ -210,29 +213,25 @@ async function loadUserContext(userId) {
 }
 
 async function saveTelegramTurn(userId, chatId, userText, assistantText) {
-  try {
-    const conversationResponse = await supabaseFetch('/rest/v1/conversations', {
-      method: 'POST',
-      service: true,
-      headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ user_id: userId, telegram_chat_id: chatId, source: 'telegram', title: userText.slice(0, 60) }),
-    })
-    const conversations = conversationResponse.ok ? await conversationResponse.json() : []
-    const conversationId = conversations[0]?.id
-    if (!conversationId) return
-    const response = await supabaseFetch('/rest/v1/messages', {
-      method: 'POST',
-      service: true,
-      body: JSON.stringify([
-        { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'user', content: userText },
-        { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'assistant', content: assistantText },
-      ]),
-    })
-    if (!response.ok) {
-      console.error('Failed to persist telegram turn:', await response.text())
-    }
-  } catch (error) {
-    console.error('Failed to persist telegram turn:', error)
+  const conversationResponse = await supabaseFetch('/rest/v1/conversations', {
+    method: 'POST',
+    service: true,
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ user_id: userId, telegram_chat_id: chatId, source: 'telegram', title: userText.slice(0, 60) }),
+  })
+  const conversations = conversationResponse.ok ? await conversationResponse.json() : []
+  const conversationId = conversations[0]?.id
+  if (!conversationId) return
+  const response = await supabaseFetch('/rest/v1/messages', {
+    method: 'POST',
+    service: true,
+    body: JSON.stringify([
+      { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'user', content: userText },
+      { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'assistant', content: assistantText },
+    ]),
+  })
+  if (!response.ok) {
+    console.error('Failed to persist telegram turn:', await response.text())
   }
 }
 
