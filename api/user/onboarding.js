@@ -22,7 +22,7 @@ module.exports = async function onboarding(req, res) {
     display_name: body.display_name || auth.user.user_metadata?.name || auth.user.email,
     full_name: body.full_name || auth.user.user_metadata?.full_name || null,
     primary_role: body.primary_role || null,
-    timezone: body.timezone || 'Asia/Phnom_Penh',
+    timezone: body.timezone || 'Asia/Tokyo',
     work_hours: body.work_hours || null,
     tone_preference: body.tone_preference || null,
     travel_preferences: body.travel_preferences || null,

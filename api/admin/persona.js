@@ -1,6 +1,7 @@
 const ADMIN_EMAIL = 'nilaademo@gmail.com'
 const DEFAULT_PROMPT =
   'You are SurMe, a personal AI assistant powered by Nilaamio. Help with scheduling, travel, email, and research. Be concise, friendly, and confirm before sensitive actions.'
+const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash'
 
 module.exports = async function persona(req, res) {
   const auth = await requireAdmin(req)
@@ -60,7 +61,7 @@ async function structurePersona(draft) {
   const cleanDraft = draft.trim()
   if (!cleanDraft) return DEFAULT_PROMPT
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GOOGLE_GEMINI_API_KEY) {
     return [
       'You are SurMe, a personal AI assistant powered by Nilaamio.',
       '',
@@ -76,28 +77,30 @@ async function structurePersona(draft) {
     ].join('\n')
   }
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.AI_MODEL || GEMINI_DEFAULT_MODEL)}:generateContent?key=${encodeURIComponent(process.env.GOOGLE_GEMINI_API_KEY)}`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: process.env.AI_MODEL || 'gpt-5',
-      messages: [
+      system_instruction: {
+        parts: [
+          {
+            text: 'Turn the admin instruction into a production system prompt for a personal AI assistant. Keep it specific, structured, safe, and concise.',
+          },
+        ],
+      },
+      contents: [
         {
-          role: 'system',
-          content:
-            'Turn the admin instruction into a production system prompt for a personal AI assistant. Keep it specific, structured, safe, and concise.',
+          parts: [{ text: cleanDraft }],
         },
-        { role: 'user', content: cleanDraft },
       ],
     }),
   })
 
-  if (!response.ok) throw new Error(`OpenAI persona structure failed: ${response.status} ${await response.text()}`)
+  if (!response.ok) throw new Error(`Gemini persona structure failed: ${response.status} ${await response.text()}`)
   const json = await response.json()
-  return json.choices?.[0]?.message?.content || DEFAULT_PROMPT
+  return json.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || DEFAULT_PROMPT
 }
 
 async function loadPersona() {

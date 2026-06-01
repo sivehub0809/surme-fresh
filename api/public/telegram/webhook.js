@@ -1,6 +1,7 @@
 const TELEGRAM_API = 'https://api.telegram.org/bot'
 const crypto = require('node:crypto')
 const { supabaseFetch } = require('../../_lib/supabase')
+const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash'
 
 module.exports = async function webhook(req, res) {
   if (req.method === 'GET') {
@@ -116,44 +117,46 @@ async function buildReply(text, userId) {
     ].join('\n')
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GOOGLE_GEMINI_API_KEY) {
     return [
       'I received it.',
       '',
       `Intent: ${text}`,
       '',
-      'AI replies are not enabled yet. Add OPENAI_API_KEY in Vercel to turn this into a full assistant response.',
+      'AI replies are not enabled yet. Add GOOGLE_GEMINI_API_KEY in Vercel to turn this into a full Gemini-powered assistant response.',
     ].join('\n')
   }
 
   const [persona, context] = await Promise.all([loadPersona(), loadUserContext(userId)])
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.AI_MODEL || GEMINI_DEFAULT_MODEL)}:generateContent?key=${encodeURIComponent(process.env.GOOGLE_GEMINI_API_KEY)}`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: process.env.AI_MODEL || 'gpt-5',
-      messages: [
+      system_instruction: {
+        parts: [
+          {
+            text: `${persona}\n\nUser context:\n${JSON.stringify(context)}`,
+          },
+        ],
+      },
+      contents: [
         {
-          role: 'system',
-          content: `${persona}\n\nUser context:\n${JSON.stringify(context)}`,
+          parts: [{ text }],
         },
-        { role: 'user', content: text },
       ],
     }),
   })
 
   if (!response.ok) {
     const detail = await response.text()
-    throw new Error(`OpenAI request failed: ${response.status} ${detail}`)
+    throw new Error(`Gemini request failed: ${response.status} ${detail}`)
   }
 
   const json = await response.json()
-  return json.choices && json.choices[0] && json.choices[0].message
-    ? json.choices[0].message.content || 'Done.'
-    : 'Done.'
+  const parts = json.candidates?.[0]?.content?.parts || []
+  return parts.map((part) => part.text || '').join('') || 'Done.'
 }
 
 async function loadUserContext(userId) {

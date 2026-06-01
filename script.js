@@ -8,9 +8,9 @@ const demos = {
     trace: ['Load calendar context', 'Find matching event', 'Check free slots', 'Prepare confirmation'],
   },
   travel: {
-    user: 'Find a flight to Bangkok next week and suggest places near my hotel.',
+    user: 'Find a flight to Tokyo next week and suggest places near my hotel.',
     assistant:
-      'I built a flight search brief, found your travel preferences, and queued place recommendations by distance and vibe.',
+      'I built a Tokyo flight brief, found your travel preferences, and queued place recommendations by distance, vibe, and timing.',
     trace: ['Read travel preferences', 'Search flight options', 'Rank nearby places', 'Create trip draft'],
   },
   email: {
@@ -44,6 +44,7 @@ const onboardingForm = document.querySelector('[data-onboarding-form]')
 const authSubmit = document.querySelector('[data-auth-submit]')
 const passwordRow = document.querySelector('[data-password-row]')
 const authLabel = document.querySelector('[data-auth-label]')
+const authStatus = document.querySelector('[data-auth-status]')
 const signOutButton = document.querySelector('[data-sign-out]')
 const adminButton = document.querySelector('[data-open-admin]')
 const personaDraft = document.querySelector('[data-persona-draft]')
@@ -297,6 +298,11 @@ async function initSupabase() {
     const response = await fetch('/api/config')
     const config = await response.json()
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {
+      if (authStatus) {
+        authStatus.hidden = false
+        authStatus.textContent =
+          'Sign-in is not connected yet. Add the Supabase URL and anon key in Vercel, then redeploy so login can talk to the database.'
+      }
       updateAuthState(null)
       return
     }
@@ -318,6 +324,11 @@ async function initSupabase() {
     })
   } catch (error) {
     console.warn(error)
+    if (authStatus) {
+      authStatus.hidden = false
+      authStatus.textContent =
+        'Sign-in is not connected yet. Check the Supabase env vars and redeploy before testing login.'
+    }
     updateAuthState(null)
   }
 }
@@ -329,6 +340,7 @@ function updateAuthState(session) {
   signOutButton.hidden = !email
   adminButton.classList.toggle('admin-visible', email === ADMIN_EMAIL)
   adminButton.classList.toggle('admin-hidden', email !== ADMIN_EMAIL)
+  if (authStatus) authStatus.hidden = Boolean(email)
 }
 
 function isAdmin() {

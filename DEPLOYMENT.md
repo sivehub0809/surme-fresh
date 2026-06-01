@@ -38,8 +38,8 @@ TELEGRAM_WEBHOOK_SECRET=<long random string>
 TELEGRAM_BOT_USERNAME=surme1_bot
 SETUP_SECRET=<long random string used only for webhook setup>
 PUBLIC_APP_URL=https://your-vercel-domain.vercel.app
-OPENAI_API_KEY=<enables AI replies and admin persona structuring>
-AI_MODEL=gpt-5
+GOOGLE_GEMINI_API_KEY=<Gemini API key from Google AI Studio>
+AI_MODEL=gemini-2.5-flash
 SUPABASE_URL=<from Supabase project settings>
 SUPABASE_ANON_KEY=<from Supabase API settings>
 SUPABASE_SERVICE_ROLE_KEY=<server-only key from Supabase API settings>
@@ -55,6 +55,7 @@ Telegram webhook only requires `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, 
 `PUBLIC_APP_URL` is strongly recommended so the webhook setup endpoint registers the exact production URL.
 Login, Google sign-in, forgot password, saved sessions, onboarding, and admin persona editing require the three Supabase vars.
 Google Calendar connect requires the three Google vars.
+AI replies and admin persona structuring use `GOOGLE_GEMINI_API_KEY`.
 
 ## 2.1 Prepare Supabase Auth
 

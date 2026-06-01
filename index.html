@@ -53,6 +53,10 @@
             A personal AI assistant that lives in Telegram and your Web App. Send a simple
             intent and SurMe turns it into action across scheduling, travel, email, and research.
           </p>
+          <p class="hero-note">
+            Designed to feel lighter, clearer, and more decisive, with Tokyo-first scheduling
+            language and global travel support built in.
+          </p>
         <div class="hero-actions" aria-label="Primary actions">
             <button class="button primary" type="button" data-open-dashboard>
               <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -76,7 +80,7 @@
           <div class="trust-row" aria-label="SurMe principles">
             <span>Zero-input workflow</span>
             <span>Always-on continuity</span>
-            <span>Encrypted storage</span>
+            <span>Tokyo-ready scheduling</span>
           </div>
         </div>
         <div class="hero-visual" aria-label="SurMe assistant preview">
@@ -129,7 +133,7 @@
               </svg>
             </span>
             <h3>Travel and logistics</h3>
-            <p>Flight options, place recommendations, itineraries, and confirmation-ready plans.</p>
+            <p>Flight options, place recommendations, itineraries, and confirmation-ready plans for Tokyo and any other destination.</p>
           </article>
           <article class="capability-card">
             <span class="icon-wrap blue">
@@ -191,7 +195,7 @@
           <div class="workflow-step">
             <span>02</span>
             <h3>Context loads</h3>
-            <p>SurMe pulls profile, preferences, memories, recent messages, active tasks, and schedule.</p>
+            <p>SurMe pulls profile, preferences, memories, recent messages, active tasks, and schedule, with timezone-aware planning for Tokyo and beyond.</p>
           </div>
           <div class="workflow-step">
             <span>03</span>
@@ -237,7 +241,7 @@
           <h2>Bring SurMe into your workflow.</h2>
           <p>
             Join the list or send a note. The current build target is students, founders,
-            professionals, CEOs, and anyone who wants fewer boring loops.
+            professionals, CEOs, and anyone who wants fewer boring loops and cleaner Tokyo-time planning.
           </p>
         </div>
         <div class="form-grid">
@@ -278,6 +282,7 @@
         <p class="eyebrow">SurMe account</p>
         <h2 id="auth-title">Sign in</h2>
         <p class="modal-subtitle">Your session is saved on this browser, so you stay authenticated until you sign out.</p>
+        <p class="modal-status" data-auth-status hidden></p>
         <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
           <button class="prompt-chip active" type="button" data-auth-mode="login">Log in</button>
           <button class="prompt-chip" type="button" data-auth-mode="signup">Sign up</button>
@@ -330,7 +335,7 @@
           </label>
           <label>
             Timezone
-            <input name="timezone" type="text" value="Asia/Phnom_Penh" required />
+            <input name="timezone" type="text" value="Asia/Tokyo" required />
           </label>
           <label>
             Work hours
