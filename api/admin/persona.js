@@ -77,30 +77,48 @@ async function structurePersona(draft) {
     ].join('\n')
   }
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.AI_MODEL || GEMINI_DEFAULT_MODEL)}:generateContent?key=${encodeURIComponent(process.env.GOOGLE_GEMINI_API_KEY)}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: [
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.AI_MODEL || GEMINI_DEFAULT_MODEL)}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': process.env.GOOGLE_GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [
+            {
+              text: 'Turn the admin instruction into a production system prompt for a personal AI assistant. Keep it specific, structured, safe, and concise.',
+            },
+          ],
+        },
+        contents: [
           {
-            text: 'Turn the admin instruction into a production system prompt for a personal AI assistant. Keep it specific, structured, safe, and concise.',
+            parts: [{ text: cleanDraft }],
           },
         ],
-      },
-      contents: [
-        {
-          parts: [{ text: cleanDraft }],
-        },
-      ],
-    }),
-  })
+      }),
+    })
 
-  if (!response.ok) throw new Error(`Gemini persona structure failed: ${response.status} ${await response.text()}`)
-  const json = await response.json()
-  return json.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || DEFAULT_PROMPT
+    if (!response.ok) throw new Error(`Gemini persona structure failed: ${response.status} ${await response.text()}`)
+    const json = await response.json()
+    return json.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || DEFAULT_PROMPT
+  } catch (error) {
+    console.error('Persona structure failed, falling back to default prompt:', error)
+    return [
+      'You are SurMe, a personal AI assistant powered by Nilaamio.',
+      '',
+      'Admin persona direction:',
+      cleanDraft,
+      '',
+      'Behavior rules:',
+      '- Convert simple user intents into clear next actions.',
+      '- Keep replies concise, warm, and practical.',
+      '- Ask for confirmation before sending email, booking travel, spending money, changing attendee calendar events, or deleting data.',
+      '- Preserve user privacy and only use integrations required for the task.',
+      '- When the user asks for research, synthesize with useful tradeoffs and cite sources when available.',
+    ].join('\n')
+  }
 }
 
 async function loadPersona() {

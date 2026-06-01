@@ -2,6 +2,7 @@ const TELEGRAM_API = 'https://api.telegram.org/bot'
 const crypto = require('node:crypto')
 const { supabaseFetch } = require('../../_lib/supabase')
 const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash'
+const MAX_TELEGRAM_MESSAGE = 3800
 
 module.exports = async function webhook(req, res) {
   if (req.method === 'GET') {
@@ -39,14 +40,14 @@ module.exports = async function webhook(req, res) {
       return res.status(200).json({ ok: true, linked: false })
     }
 
-    const reply = await buildReply(text, linked.user_id)
+    const reply = clampTelegramMessage(await buildReply(text, linked.user_id))
     await saveTelegramTurn(linked.user_id, chatId, text, reply)
     await sendTelegramMessage(chatId, reply)
     return res.status(200).json({ ok: true })
   } catch (error) {
     console.error(error)
     try {
-      await sendTelegramMessage(chatId, 'SurMe is online, but I hit a setup issue. Please check the Vercel function logs.')
+      await sendTelegramMessage(chatId, 'SurMe is online, but I hit a temporary issue. Please try again in a moment.')
     } catch (sendError) {
       console.error(sendError)
     }
@@ -128,35 +129,64 @@ async function buildReply(text, userId) {
   }
 
   const [persona, context] = await Promise.all([loadPersona(), loadUserContext(userId)])
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.AI_MODEL || GEMINI_DEFAULT_MODEL)}:generateContent?key=${encodeURIComponent(process.env.GOOGLE_GEMINI_API_KEY)}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: [
-          {
-            text: `${persona}\n\nUser context:\n${JSON.stringify(context)}`,
-          },
-        ],
-      },
-      contents: [
-        {
-          parts: [{ text }],
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.AI_MODEL || GEMINI_DEFAULT_MODEL)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': process.env.GOOGLE_GEMINI_API_KEY,
         },
-      ],
-    }),
-  })
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [
+              {
+                text: `${persona}\n\nUser context:\n${JSON.stringify(context)}`,
+              },
+            ],
+          },
+          contents: [
+            {
+              parts: [{ text }],
+            },
+          ],
+        }),
+      },
+    )
 
-  if (!response.ok) {
-    const detail = await response.text()
-    throw new Error(`Gemini request failed: ${response.status} ${detail}`)
+    if (!response.ok) {
+      const detail = await response.text()
+      console.error('Gemini request failed:', response.status, detail)
+      return fallbackAssistantReply(text, persona)
+    }
+
+    const json = await response.json()
+    const parts = json.candidates?.[0]?.content?.parts || []
+    const reply = parts.map((part) => part.text || '').join('').trim()
+    return clampTelegramMessage(reply || fallbackAssistantReply(text, persona))
+  } catch (error) {
+    console.error('Gemini request threw:', error)
+    return fallbackAssistantReply(text, persona)
   }
+}
 
-  const json = await response.json()
-  const parts = json.candidates?.[0]?.content?.parts || []
-  return parts.map((part) => part.text || '').join('') || 'Done.'
+function fallbackAssistantReply(text, persona) {
+  const shortPersona = String(persona || '')
+    .split('\n')
+    .slice(0, 4)
+    .join(' ')
+    .slice(0, 240)
+
+  return [
+    'I got your message.',
+    '',
+    `Intent: ${text}`,
+    '',
+    shortPersona ? `Persona: ${shortPersona}` : 'Persona: SurMe is ready.',
+    '',
+    'Gemini had a temporary issue, so I am keeping this reply safe and simple for now.',
+  ].join('\n')
 }
 
 async function loadUserContext(userId) {
@@ -171,23 +201,30 @@ async function loadUserContext(userId) {
 }
 
 async function saveTelegramTurn(userId, chatId, userText, assistantText) {
-  const conversationResponse = await supabaseFetch('/rest/v1/conversations', {
-    method: 'POST',
-    service: true,
-    headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ user_id: userId, telegram_chat_id: chatId, source: 'telegram', title: userText.slice(0, 60) }),
-  })
-  const conversations = conversationResponse.ok ? await conversationResponse.json() : []
-  const conversationId = conversations[0]?.id
-  if (!conversationId) return
-  await supabaseFetch('/rest/v1/messages', {
-    method: 'POST',
-    service: true,
-    body: JSON.stringify([
-      { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'user', content: userText },
-      { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'assistant', content: assistantText },
-    ]),
-  })
+  try {
+    const conversationResponse = await supabaseFetch('/rest/v1/conversations', {
+      method: 'POST',
+      service: true,
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ user_id: userId, telegram_chat_id: chatId, source: 'telegram', title: userText.slice(0, 60) }),
+    })
+    const conversations = conversationResponse.ok ? await conversationResponse.json() : []
+    const conversationId = conversations[0]?.id
+    if (!conversationId) return
+    const response = await supabaseFetch('/rest/v1/messages', {
+      method: 'POST',
+      service: true,
+      body: JSON.stringify([
+        { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'user', content: userText },
+        { conversation_id: conversationId, user_id: userId, telegram_chat_id: chatId, role: 'assistant', content: assistantText },
+      ]),
+    })
+    if (!response.ok) {
+      console.error('Failed to persist telegram turn:', await response.text())
+    }
+  } catch (error) {
+    console.error('Failed to persist telegram turn:', error)
+  }
 }
 
 async function loadPersona() {
@@ -215,12 +252,21 @@ async function sendTelegramMessage(chatId, text) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: chatId,
-      text,
+      text: clampTelegramMessage(text),
       disable_web_page_preview: true,
     }),
   })
 
   if (!response.ok) {
-    throw new Error(`Telegram sendMessage failed: ${response.status} ${await response.text()}`)
+    console.error(`Telegram sendMessage failed: ${response.status} ${await response.text()}`)
+    return false
   }
+
+  return true
+}
+
+function clampTelegramMessage(text) {
+  const value = String(text || '').trim()
+  if (value.length <= MAX_TELEGRAM_MESSAGE) return value
+  return `${value.slice(0, MAX_TELEGRAM_MESSAGE - 3).trimEnd()}...`
 }
