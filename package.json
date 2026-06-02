@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vercel dev",
     "start": "npx serve .",
-    "check": "node -e \"const fs=require('fs'); ['index.html','styles.css','script.js','vercel.json','supabase-fresh.sql','api/config.js','api/admin/persona.js','api/user/onboarding.js','api/telegram/create-link.js','api/google/start.js','api/google/callback.js','api/public/telegram/webhook.js'].forEach(f=>{if(!fs.existsSync(f)) throw new Error(f+' missing')}); console.log('SurMe website files OK')\""
+    "check": "node -e \"const fs=require('fs'); ['index.html','styles.css','script.js','vercel.json','supabase-fresh.sql','api/config.js','api/admin/persona.js','api/admin/dashboard.js','api/admin/users.js','api/admin/gemini-test.js','api/user/onboarding.js','api/telegram/create-link.js','api/google/start.js','api/google/callback.js','api/public/stats.js','api/public/telegram/webhook.js'].forEach(f=>{if(!fs.existsSync(f)) throw new Error(f+' missing')}); console.log('SurMe website files OK')\""
   },
   "engines": {
     "node": ">=18"

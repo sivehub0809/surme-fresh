@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -13,15 +13,25 @@
   <body>
     <header class="site-header" data-header>
       <a class="brand" href="#top" aria-label="SurMe home">
-        <span class="brand-mark">S</span>
-        <span>SurMe</span>
+        <img class="brand-mark" src="assets/surme-logo.jpg" alt="" aria-hidden="true" />
+        <span class="brand-copy">
+          <span>SurMe</span>
+          <small>by <a class="brand-link" href="https://nilaamio.lovable.app/" target="_blank" rel="noreferrer">Nilaamio</a></small>
+        </span>
       </a>
-      <nav class="site-nav" aria-label="Primary navigation">
-        <a href="#capabilities">Capabilities</a>
-        <a href="#workflow">Workflow</a>
-        <a href="#security">Security</a>
-        <a href="#contact">Contact</a>
-      </nav>
+      <div class="header-center">
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="#capabilities">Capabilities</a>
+          <a href="#workflow">Workflow</a>
+          <a href="#security">Security</a>
+          <a href="#contact">Contact</a>
+        </nav>
+        <div class="message-count-pill" aria-live="polite">
+          <span class="dot"></span>
+          <strong data-message-count>0</strong>
+          <span>messages and counting</span>
+        </div>
+      </div>
       <div class="header-actions">
         <button class="header-action ghost" type="button" data-open-auth>
           <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -29,11 +39,23 @@
           </svg>
           <span data-auth-label>Sign in</span>
         </button>
+        <button class="header-action" type="button" data-open-dashboard-header hidden>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M4 5h16v14H4V5Zm3 3h5v3H7V8Zm0 6h10v2H7v-2Z" />
+          </svg>
+          <span>Dashboard</span>
+        </button>
         <button class="header-action admin-hidden" type="button" data-open-admin>
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm1 6v4l3 2-1 1.7-4-2.7V8h2Z" />
           </svg>
           <span>Admin</span>
+        </button>
+        <button class="header-action" type="button" data-sign-out hidden>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M10 17h2V7h-2v10Zm5-11v2h3v8h-3v2h5V6h-5Zm-9 5 4-4v3h6v2H10v3l-4-4Z" />
+          </svg>
+          <span>Sign out</span>
         </button>
         <a class="header-action" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">
           <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -54,7 +76,7 @@
             SurMe handles scheduling, travel, email, and research without making you leave chat.
           </p>
           <p class="hero-note">
-            Blue-sky visual system, Tokyo-first scheduling language, and a quiet fallback when AI
+            Blue-sky visual system, Cambodia-time scheduling language, and a quiet fallback when AI
             needs one more second.
           </p>
         <div class="hero-actions" aria-label="Primary actions">
@@ -195,7 +217,7 @@
           <div class="workflow-step">
             <span>02</span>
             <h3>Context loads</h3>
-            <p>SurMe pulls profile, preferences, memories, recent messages, active tasks, and schedule, with timezone-aware planning for Tokyo and beyond.</p>
+            <p>SurMe pulls profile, memories, recent messages, active tasks, and schedule, with timezone-aware planning for Cambodia and beyond.</p>
           </div>
           <div class="workflow-step">
             <span>03</span>
@@ -241,8 +263,8 @@
           <h2>Bring SurMe into your workflow.</h2>
           <p>
             Join the list or send a note. The current build target is students, founders,
-            professionals, CEOs, and anyone who wants fewer boring loops and cleaner Tokyo-time planning.
-          </p>
+            professionals, CEOs, and anyone who wants fewer boring loops and cleaner Cambodia-time planning.
+            </p>
         </div>
         <div class="form-grid">
           <form class="site-form" data-form="waitlist">
@@ -271,7 +293,7 @@
 
     <footer class="site-footer">
       <span>SurMe</span>
-      <span>Personal AI assistant powered by Nilaamio.</span>
+      <span>Personal AI assistant powered by <a class="footer-link" href="https://nilaamio.lovable.app/" target="_blank" rel="noreferrer">Nilaamio</a>.</span>
       <a href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">Telegram</a>
     </footer>
 
@@ -335,27 +357,11 @@
           </label>
           <label>
             Timezone
-            <input name="timezone" type="text" value="Asia/Tokyo" required />
+            <input name="timezone" type="text" value="Asia/Phnom_Penh" required />
           </label>
-          <label>
-            Work hours
-            <input name="work_hours" type="text" placeholder="9 AM - 6 PM" />
-          </label>
-          <label>
-            Tone preference
-            <input name="tone_preference" type="text" placeholder="Short, friendly, direct" />
-          </label>
-          <label>
+          <label class="wide-field">
             Goals
-            <input name="goals" type="text" placeholder="Study, fundraising, hiring, operations" />
-          </label>
-          <label class="wide-field">
-            Travel preferences
-            <textarea name="travel_preferences" rows="3" placeholder="Budget, airlines, seat preference, hotel style"></textarea>
-          </label>
-          <label class="wide-field">
-            Contacts and calendar habits
-            <textarea name="calendar_habits" rows="3" placeholder="People you meet often, preferred meeting times, location/link habits"></textarea>
+            <textarea name="goals" rows="3" placeholder="What do you want SurMe to help with?"></textarea>
           </label>
           <label class="wide-field">
             Personality notes
@@ -399,3 +405,4 @@
     <script src="script.js?v=5"></script>
   </body>
 </html>
+

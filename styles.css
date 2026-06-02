@@ -116,16 +116,53 @@ textarea {
 .brand {
   font-weight: 800;
   letter-spacing: 0;
+  min-width: 0;
 }
 
 .brand-mark {
   width: 36px;
   height: 36px;
-  display: grid;
-  place-items: center;
+  display: block;
+  object-fit: cover;
   border-radius: 8px;
-  background: var(--ink);
-  color: var(--white);
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 8px 18px rgba(24, 32, 31, 0.12);
+}
+
+.brand-copy {
+  display: grid;
+  gap: 1px;
+  line-height: 1.05;
+}
+
+.brand-copy span {
+  font-size: 16px;
+}
+
+.brand-copy small {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.brand-link {
+  background: linear-gradient(90deg, #2b6df5, #6fb1ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900;
+}
+
+.brand-link:hover {
+  text-decoration: underline;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-width: 0;
 }
 
 .site-nav {
@@ -158,10 +195,40 @@ textarea {
   align-items: center;
   justify-content: end;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .header-action.ghost {
   cursor: pointer;
+}
+
+.message-count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(47, 123, 216, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.message-count-pill strong {
+  color: var(--teal);
+  font-size: 14px;
+}
+
+.message-count-pill .dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 0 6px rgba(47, 123, 216, 0.12);
 }
 
 .admin-hidden {
@@ -1189,6 +1256,17 @@ body.admin-open .site-footer {
     grid-template-columns: auto 1fr;
   }
 
+  .header-center {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .header-actions {
+    grid-column: 1 / -1;
+    justify-content: start;
+  }
+
   .site-nav {
     display: none;
   }
@@ -1214,6 +1292,15 @@ body.admin-open .site-footer {
 @media (max-width: 640px) {
   .site-header {
     padding: 14px 16px;
+  }
+
+  .header-center {
+    gap: 12px;
+  }
+
+  .message-count-pill {
+    width: 100%;
+    justify-content: center;
   }
 
   .header-actions {

@@ -6,6 +6,7 @@ function env(name, fallback = '') {
 
 async function generateGeminiText({
   prompt,
+  parts,
   systemInstruction,
   model,
   temperature = 0.5,
@@ -41,7 +42,10 @@ async function generateGeminiText({
       contents: [
         {
           role: 'user',
-          parts: [{ text: String(prompt || '').trim() }],
+          parts:
+            Array.isArray(parts) && parts.length
+              ? parts
+              : [{ text: String(prompt || '').trim() }],
         },
       ],
       generationConfig: {

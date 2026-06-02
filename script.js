@@ -8,9 +8,9 @@ const demos = {
     trace: ['Load calendar context', 'Find matching event', 'Check free slots', 'Prepare confirmation'],
   },
   travel: {
-    user: 'Find a flight to Tokyo next week and suggest places near my hotel.',
+    user: 'Find a flight from Phnom Penh next week and suggest places near my hotel.',
     assistant:
-      'I built a Tokyo flight brief, found your travel preferences, and queued place recommendations by distance, vibe, and timing.',
+      'I built a Phnom Penh travel brief, found your travel preferences, and queued place recommendations by distance, vibe, and timing.',
     trace: ['Read travel preferences', 'Search flight options', 'Rank nearby places', 'Create trip draft'],
   },
   email: {
@@ -30,6 +30,7 @@ const demos = {
 let supabaseClient = null
 let authMode = 'login'
 let currentSession = null
+let messageCountTimer = null
 
 const feed = document.querySelector('[data-chat-feed]')
 const trace = document.querySelector('[data-action-trace]')
@@ -47,6 +48,8 @@ const authLabel = document.querySelector('[data-auth-label]')
 const authStatus = document.querySelector('[data-auth-status]')
 const signOutButton = document.querySelector('[data-sign-out]')
 const adminButton = document.querySelector('[data-open-admin]')
+const headerDashboardButton = document.querySelector('[data-open-dashboard-header]')
+const messageCountLabel = document.querySelector('[data-message-count]')
 
 let adminState = {
   tab: 'behavior',
@@ -100,7 +103,9 @@ document.querySelector('[data-open-auth]').addEventListener('click', () => {
 document.querySelector('[data-close-auth]').addEventListener('click', () => closeModal(authModal))
 document.querySelector('[data-close-admin]').addEventListener('click', () => closeModal(adminModal))
 adminButton.addEventListener('click', openAdminPanel)
-document.querySelector('[data-open-dashboard]').addEventListener('click', openDashboard)
+document.querySelectorAll('[data-open-dashboard], [data-open-dashboard-header]').forEach((button) => {
+  button.addEventListener('click', openDashboard)
+})
 document.querySelector('[data-close-dashboard]').addEventListener('click', () => closeModal(dashboardModal))
 
 document.querySelectorAll('[data-auth-mode]').forEach((button) => {
@@ -363,9 +368,22 @@ function updateAuthState(session) {
   const email = session && session.user && session.user.email
   authLabel.textContent = email ? email.split('@')[0] : 'Sign in'
   signOutButton.hidden = !email
+  if (headerDashboardButton) headerDashboardButton.hidden = !email
   adminButton.classList.toggle('admin-visible', email === ADMIN_EMAIL)
   adminButton.classList.toggle('admin-hidden', email !== ADMIN_EMAIL)
   if (authStatus) authStatus.hidden = Boolean(email)
+}
+
+async function refreshMessageCount() {
+  if (!messageCountLabel) return
+  try {
+    const response = await fetch('/api/public/stats')
+    const json = await response.json().catch(() => ({}))
+    const count = Number(json.totalMessages || 0)
+    messageCountLabel.textContent = String(count)
+  } catch (error) {
+    console.warn('Failed to refresh message count:', error)
+  }
 }
 
 function isAdmin() {
@@ -746,5 +764,9 @@ window.addEventListener('scroll', () => {
 renderDemo('schedule')
 setAuthMode('login')
 initSupabase()
+refreshMessageCount()
+if (!messageCountTimer) {
+  messageCountTimer = window.setInterval(refreshMessageCount, 30000)
+}
 
 

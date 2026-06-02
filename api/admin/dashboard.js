@@ -104,7 +104,7 @@ async function loadDashboard() {
       email: profile.email || google?.email || '',
       display_name: profile.display_name || profile.full_name || profile.email || 'Unknown',
       primary_role: profile.primary_role || '',
-      timezone: profile.timezone || 'Asia/Tokyo',
+      timezone: profile.timezone || 'Asia/Phnom_Penh',
       telegram_chat_id: profile.telegram_chat_id || telegram?.telegram_chat_id || null,
       telegram_user_id: telegram?.telegram_user_id || null,
       google_email: profile.google_email || google?.email || null,
@@ -235,7 +235,7 @@ async function saveSections(body) {
 async function saveSchedule(body) {
   const schedule = {
     enabled: Boolean(body.enabled),
-    timezone: String(body.timezone || 'Asia/Tokyo').trim(),
+    timezone: String(body.timezone || 'Asia/Phnom_Penh').trim(),
     morning_time: String(body.morning_time || '06:00').trim(),
     morning_text: String(body.morning_text || '').trim(),
     afternoon_time: String(body.afternoon_time || '12:00').trim(),
