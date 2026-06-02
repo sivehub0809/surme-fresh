@@ -70,29 +70,32 @@
       <section class="hero section-band">
         <div class="hero-copy">
           <p class="eyebrow">Telegram-first assistant</p>
-          <h1>meet SurMe. it lives in your texts and quietly runs your life.</h1>
+          <h1>
+            meet SurMe.
+            <span class="hero-gradient">it moves the day</span>
+            from inside your texts.
+          </h1>
           <p class="hero-lede">
             A calm executive assistant for students, founders, CEOs, and working professionals.
-            SurMe handles scheduling, travel, email, and research without making you leave chat.
+            SurMe handles scheduling, calendar follow-ups, chat questions, and image reads without making you leave Telegram.
           </p>
           <p class="hero-note">
-            Blue-sky visual system, Cambodia-time scheduling language, and a quiet fallback when AI
-            needs one more second.
+            Blue-sky visual system, Cambodia-time scheduling language, a quiet fallback when Gemini needs one more second, and a top-right sign in state that changes when you log in.
           </p>
         <div class="hero-actions" aria-label="Primary actions">
-            <button class="button primary" type="button" data-open-dashboard>
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M4 5h16v14H4V5Zm3 3h5v3H7V8Zm0 6h10v2H7v-2Z" />
-              </svg>
-              Open Web App
-            </button>
             <a class="button primary" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <path d="m22 2-7.7 20-4.4-8.6L2 9.6 22 2Zm-7.9 16.1 3.4-8.8-6.1 5.1 2.7 3.7Z" />
               </svg>
               Start in Telegram
             </a>
-            <a class="button secondary" href="#demo">
+            <button class="button secondary" type="button" data-open-dashboard>
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M4 5h16v14H4V5Zm3 3h5v3H7V8Zm0 6h10v2H7v-2Z" />
+              </svg>
+              Open Web App
+            </button>
+            <a class="button tertiary" href="#demo">
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v9a2.5 2.5 0 0 1-2.5 2.5H9l-5 4v-4.5A2.5 2.5 0 0 1 2 14.5v-9Z" />
               </svg>
@@ -259,34 +262,45 @@
 
       <section class="contact-section" id="contact">
         <div class="contact-copy">
-          <p class="eyebrow">Get early access</p>
-          <h2>Bring SurMe into your workflow.</h2>
+          <p class="eyebrow">Get set up</p>
+          <h2>Use the pieces that already work.</h2>
           <p>
-            Join the list or send a note. The current build target is students, founders,
-            professionals, CEOs, and anyone who wants fewer boring loops and cleaner Cambodia-time planning.
+            Sign in to change your account, finish onboarding, connect Google Calendar, or jump back into Telegram.
+            Everything here points to a real step in the setup flow.
             </p>
         </div>
-        <div class="form-grid">
-          <form class="site-form" data-form="waitlist">
-            <h3>Stay in the loop</h3>
-            <label>
-              Email
-              <input name="email" type="email" placeholder="you@example.com" required />
-            </label>
-            <button class="button primary full" type="submit">Join waitlist</button>
-          </form>
-          <form class="site-form" data-form="contact">
-            <h3>Get in touch</h3>
-            <label>
-              Name
-              <input name="name" type="text" placeholder="Your name" required />
-            </label>
-            <label>
-              Message
-              <textarea name="message" rows="4" placeholder="Tell us what SurMe should handle for you" required></textarea>
-            </label>
-            <button class="button secondary full" type="submit">Send message</button>
-          </form>
+        <div class="setup-panel">
+          <div class="setup-panel-top">
+            <span class="status-dot"></span>
+            <strong>Ready for setup</strong>
+            <span class="setup-muted">changes with auth state</span>
+          </div>
+          <div class="setup-actions">
+            <button class="button primary" type="button" data-open-dashboard>
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M4 5h16v14H4V5Zm3 3h5v3H7V8Zm0 6h10v2H7v-2Z" />
+              </svg>
+              Open Web App
+            </button>
+            <button class="button secondary" type="button" data-open-auth>
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z" />
+              </svg>
+              Sign in
+            </button>
+            <a class="button tertiary" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="m22 2-7.7 20-4.4-8.6L2 9.6 22 2Zm-7.9 16.1 3.4-8.8-6.1 5.1 2.7 3.7Z" />
+              </svg>
+              Start Telegram
+            </a>
+          </div>
+          <div class="setup-tags">
+            <span>Onboarding</span>
+            <span>Calendar</span>
+            <span>Admin console</span>
+            <span>Telegram</span>
+          </div>
         </div>
       </section>
     </main>

@@ -366,6 +366,7 @@ async function initSupabase() {
 function updateAuthState(session) {
   currentSession = session
   const email = session && session.user && session.user.email
+  document.body.classList.toggle('is-authenticated', Boolean(email))
   authLabel.textContent = email ? email.split('@')[0] : 'Sign in'
   signOutButton.hidden = !email
   if (headerDashboardButton) headerDashboardButton.hidden = !email
