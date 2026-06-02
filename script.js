@@ -1,4 +1,4 @@
-const ADMIN_EMAIL = 'nilaademo@gmail.com'
+﻿const ADMIN_EMAIL = 'nilaademo@gmail.com'
 
 const demos = {
   schedule: {
@@ -49,7 +49,7 @@ const signOutButton = document.querySelector('[data-sign-out]')
 const adminButton = document.querySelector('[data-open-admin]')
 
 let adminState = {
-  tab: 'dashboard',
+  tab: 'behavior',
   data: null,
 }
 
@@ -279,7 +279,7 @@ function setAuthMode(mode) {
 
 async function openAdminPanel(refresh = false) {
   if (!isAdmin()) return showToast('Admin access is only enabled for nilaademo@gmail.com.')
-  if (!refresh) adminState.tab = 'dashboard'
+  if (!refresh) adminState.tab = 'behavior'
   const token = await getAccessToken()
   const response = await fetch('/api/admin/dashboard', {
     headers: { Authorization: `Bearer ${token}` },
@@ -387,37 +387,24 @@ function closeModal(modal) {
 }
 
 function setAdminTab(tab) {
-  adminState.tab = tab
+  adminState.tab = ['behavior', 'users', 'health'].includes(tab) ? tab : 'behavior'
   const panels = adminModal.querySelectorAll('[data-admin-panel]')
   const buttons = adminModal.querySelectorAll('[data-admin-tab-button]')
   panels.forEach((panel) => {
-    panel.hidden = panel.dataset.adminPanel !== tab
+    panel.hidden = panel.dataset.adminPanel !== adminState.tab
   })
   buttons.forEach((button) => {
-    button.classList.toggle('active', button.dataset.adminTabButton === tab)
+    button.classList.toggle('active', button.dataset.adminTabButton === adminState.tab)
   })
   const label = adminModal.querySelector('[data-admin-current-tab]')
-  if (label) label.textContent = formatTabLabel(tab)
+  if (label) label.textContent = formatTabLabel(adminState.tab)
 }
 
 function formatTabLabel(tab) {
   return {
-    dashboard: 'Dashboard',
-    knowledge: 'Knowledge',
     behavior: 'Behavior',
-    commands: 'Commands',
-    onboarding: 'Onboarding',
     users: 'Users',
-    oauth: 'OAuth',
-    telegram: 'Telegram',
     health: 'Health',
-    reports: 'Reports',
-    insights: 'Insights',
-    inbox: 'Inbox',
-    newsletter: 'Newsletter',
-    brand: 'Brand',
-    sections: 'Sections',
-    schedule: 'Scheduled',
   }[tab] || tab
 }
 
@@ -592,25 +579,18 @@ function renderAdminConsole(data) {
   const settings = data?.settings || {}
   const siteText = settings.site_text || {}
   const behavior = siteText.behavior || {}
-  const brand = siteText.brand || {}
-  const schedule = data?.schedule || {}
-  const commands = settings.telegram_commands || []
-  const knowledge = settings.knowledge || []
-  const sections = siteText.sections || []
-  const onboarding = settings.onboarding_questions || {}
   const health = data?.health || {}
   const users = data?.users || []
-  const oauthEvents = data?.oauthEvents || []
   const recentFailures = data?.recentFailures || []
 
   return `
     <div class="admin-console-shell">
       <div class="admin-topbar">
-        <button class="admin-back" type="button" data-admin-close>← Back to site</button>
+        <button class="admin-back" type="button" data-admin-close>&larr; Back to site</button>
         <div>
           <p class="eyebrow">Admin Console</p>
           <h2>SurMe system controller</h2>
-          <p class="admin-meta">Visible only to <strong>nilaademo@gmail.com</strong>. Manage AI, onboarding, commands, users, branding, content, and runtime health from one place.</p>
+          <p class="admin-meta">Visible only to <strong>nilaademo@gmail.com</strong>. Keep the MVP focused on behavior, users, and runtime health.</p>
         </div>
         <div class="admin-top-actions">
           <button class="button secondary" type="button" data-admin-action="refresh">Refresh</button>
@@ -621,70 +601,24 @@ function renderAdminConsole(data) {
       <div class="admin-metrics">
         ${metricCard('Total users', health.totalUsers ?? 0)}
         ${metricCard('Messages', health.totalMessages ?? 0)}
-        ${metricCard('Conversations', health.totalConversations ?? 0)}
         ${metricCard('Active 24h', health.activeUsers ?? 0)}
+        ${metricCard('Failed webhooks', health.failedWebhooks ?? 0)}
+        ${metricCard('Failed AI replies', health.failedAiReplies ?? 0)}
         ${metricCard('OAuth failures', health.oauthFailures ?? 0)}
       </div>
 
       <div class="admin-nav" role="tablist" aria-label="Admin sections">
-        ${adminTabButton('dashboard', 'Dashboard', true)}
-        ${adminTabButton('knowledge', 'Knowledge')}
-        ${adminTabButton('behavior', 'Behavior')}
-        ${adminTabButton('commands', 'Commands')}
-        ${adminTabButton('onboarding', 'Onboarding')}
+        ${adminTabButton('behavior', 'Behavior', true)}
         ${adminTabButton('users', 'Users')}
-        ${adminTabButton('oauth', 'OAuth')}
-        ${adminTabButton('telegram', 'Telegram')}
         ${adminTabButton('health', 'Health')}
-        ${adminTabButton('reports', 'Reports')}
-        ${adminTabButton('insights', 'Insights')}
-        ${adminTabButton('inbox', 'Inbox')}
-        ${adminTabButton('newsletter', 'Newsletter')}
-        ${adminTabButton('brand', 'Brand')}
-        ${adminTabButton('sections', 'Sections')}
       </div>
 
-      <div class="admin-current-tab"><span data-admin-current-tab>Dashboard</span></div>
-
-      <section class="admin-panel" data-admin-panel="dashboard">
-        <div class="admin-card">
-          <h3>System health</h3>
-          <div class="admin-two-col">
-            <div class="mini-stat"><span>Web app messages</span><strong>${health.webMessages ?? 0}</strong></div>
-            <div class="mini-stat"><span>Telegram messages</span><strong>${health.telegramMessages ?? 0}</strong></div>
-          </div>
-        </div>
-        <div class="admin-card">
-          <h3>Runtime notes</h3>
-          <p>Use the tabs below to edit SurMe’s persona, onboarding, command menu, user-facing brand, and schedule. Telegram and Google hooks are already connected; this console controls the behavior they use.</p>
-          ${recentFailures.length ? `<div class="admin-log-list">${recentFailures.map((row) => `<div class="admin-log error"><strong>${escapeHtml(row.event_type || 'failure')}</strong><span>${escapeHtml(row.error_message || 'Unknown issue')}</span></div>`).join('')}</div>` : '<p class="admin-empty">No recent failures.</p>'}
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="knowledge" hidden>
-        <div class="admin-card">
-          <div class="admin-panel-header">
-            <div>
-              <h3>Knowledge base</h3>
-              <p>Store facts, scams, reminders, and evergreen replies. Supports manual edits and bulk JSON import.</p>
-            </div>
-            <button class="button primary" type="button" data-admin-action="refresh">Reload</button>
-          </div>
-          <form data-admin-form="knowledge" class="admin-form">
-            <label>Knowledge JSON
-              <textarea name="knowledge_json" rows="16" placeholder='[{"category":"scam","title":"OTP phishing","content":"Never share verification codes.","keywords":["otp","phishing"]}]'>${escapeHtml(JSON.stringify(knowledge, null, 2))}</textarea>
-            </label>
-            <div class="admin-actions">
-              <button class="button primary" type="submit">Save knowledge</button>
-            </div>
-          </form>
-        </div>
-      </section>
+      <div class="admin-current-tab"><span data-admin-current-tab>Behavior</span></div>
 
       <section class="admin-panel" data-admin-panel="behavior" hidden>
         <div class="admin-card">
           <h3>Custom AI Behavior Prompt</h3>
-          <p>This is the master prompt that the bot and web assistant use.</p>
+          <p>This is the master prompt that the bot and web assistant use. Keep it calm, direct, and task-first.</p>
           <form data-admin-form="behavior" class="admin-form">
             <label>Persona
               <textarea name="persona" rows="9" placeholder="You are SurMe...">${escapeHtml(behavior.persona || settings.system_prompt || '')}</textarea>
@@ -718,55 +652,6 @@ function renderAdminConsole(data) {
         </div>
       </section>
 
-      <section class="admin-panel" data-admin-panel="commands" hidden>
-        <div class="admin-card">
-          <h3>Telegram slash commands</h3>
-          <p>Telegram only. Web chat commands stay disabled unless you turn them on later.</p>
-          <form data-admin-form="commands" class="admin-form">
-            <label>Commands JSON
-              <textarea name="commands_json" rows="14" placeholder='[{"command":"/connectcalendar","description":"Connect Google Calendar","prompt":"Help the user connect calendar."}]'>${escapeHtml(JSON.stringify(commands, null, 2))}</textarea>
-            </label>
-            <div class="admin-actions">
-              <button class="button primary" type="submit">Save commands</button>
-            </div>
-          </form>
-          <div class="admin-list">
-            ${commands.length ? commands.map((command) => `<div class="admin-row"><strong>${escapeHtml(command.command || '')}</strong><span>${escapeHtml(command.description || '')}</span></div>`).join('') : '<p class="admin-empty">No custom commands yet.</p>'}
-          </div>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="onboarding" hidden>
-        <div class="admin-card">
-          <h3>Onboarding questions</h3>
-          <p>Globally shared across every user.</p>
-          <form data-admin-form="onboarding" class="admin-form">
-            <label>Welcome message
-              <input name="welcome_message" value="${escapeAttr(onboarding.welcome_message || '')}" placeholder="Sursdeyy!" />
-            </label>
-            <div class="admin-two-col">
-              <label>Ask name <input name="ask_name" value="${escapeAttr(onboarding.ask_name || '')}" placeholder="What is your full name?" /></label>
-              <label>Ask age <input name="ask_age" value="${escapeAttr(onboarding.ask_age || '')}" placeholder="How old are you?" /></label>
-            </div>
-            <label>Ask goals <input name="ask_goals" value="${escapeAttr(onboarding.ask_goals || '')}" placeholder="Pick ur main goal !" /></label>
-            <label>Ask calendar <input name="ask_calendar" value="${escapeAttr(onboarding.ask_calendar || '')}" placeholder="Do you use Google Calendar? (yes/no)" /></label>
-            <label>Ask source <input name="ask_source" value="${escapeAttr(onboarding.ask_source || '')}" placeholder="Where do you hear about Surme?" /></label>
-            <label>Wrap-up message <input name="wrap_up_message" value="${escapeAttr(onboarding.wrap_up_message || '')}" placeholder="✅ ur set! tap /connectweb anytime..." /></label>
-            <div class="admin-two-col">
-              <label>Goal options
-                <textarea name="goal_options" rows="5" placeholder="Study smarter&#10;Stay organized">${escapeHtml((onboarding.goal_options || []).join('\n'))}</textarea>
-              </label>
-              <label>Source options
-                <textarea name="source_options" rows="5" placeholder="TikTok&#10;Instagram&#10;Friend">${escapeHtml((onboarding.source_options || []).join('\n'))}</textarea>
-              </label>
-            </div>
-            <div class="admin-actions">
-              <button class="button primary" type="submit">Save onboarding</button>
-            </div>
-          </form>
-        </div>
-      </section>
-
       <section class="admin-panel" data-admin-panel="users" hidden>
         <div class="admin-card">
           <div class="admin-panel-header">
@@ -783,116 +668,20 @@ function renderAdminConsole(data) {
         </div>
       </section>
 
-      <section class="admin-panel" data-admin-panel="oauth" hidden>
-        <div class="admin-card">
-          <h3>OAuth & links</h3>
-          <p>Linked emails, Telegram bindings, and connection logs.</p>
-          <div class="admin-log-list">
-            ${oauthEvents.slice(0, 12).map((row) => `<div class="admin-log"><strong>${escapeHtml(row.provider || 'google')} · ${escapeHtml(row.event_type || 'event')}</strong><span>${escapeHtml(row.success ? 'Success' : row.error_message || 'Pending')}</span></div>`).join('') || '<p class="admin-empty">No OAuth events yet.</p>'}
-          </div>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="telegram" hidden>
-        <div class="admin-card">
-          <h3>Telegram scheduled greetings</h3>
-          <p>The bot broadcasts these to all Telegram users at the times below.</p>
-          <form data-admin-form="schedule" class="admin-form">
-            <label class="toggle-row"><span>Enabled</span><input name="enabled" type="checkbox" ${schedule.enabled ? 'checked' : ''} /></label>
-            <label>Timezone <input name="timezone" value="${escapeAttr(schedule.timezone || 'Asia/Tokyo')}" /></label>
-            <div class="admin-four-grid">
-              <label>Morning time <input name="morning_time" value="${escapeAttr(schedule.morning_time || '06:00')}" /></label>
-              <label>Afternoon time <input name="afternoon_time" value="${escapeAttr(schedule.afternoon_time || '12:00')}" /></label>
-              <label>Evening time <input name="evening_time" value="${escapeAttr(schedule.evening_time || '17:00')}" /></label>
-              <label>Night time <input name="night_time" value="${escapeAttr(schedule.night_time || '21:30')}" /></label>
-            </div>
-            <div class="admin-two-col">
-              <label>Morning text <textarea name="morning_text" rows="4">${escapeHtml(schedule.morning_text || '')}</textarea></label>
-              <label>Afternoon text <textarea name="afternoon_text" rows="4">${escapeHtml(schedule.afternoon_text || '')}</textarea></label>
-              <label>Evening text <textarea name="evening_text" rows="4">${escapeHtml(schedule.evening_text || '')}</textarea></label>
-              <label>Night text <textarea name="night_text" rows="4">${escapeHtml(schedule.night_text || '')}</textarea></label>
-            </div>
-            <div class="admin-actions">
-              <button class="button primary" type="submit">Save schedule</button>
-            </div>
-          </form>
-        </div>
-      </section>
-
       <section class="admin-panel" data-admin-panel="health" hidden>
         <div class="admin-card">
           <h3>System health</h3>
-          <div class="admin-two-col">
+          <div class="admin-two-col health-grid">
             ${metricCard('Users total', health.totalUsers ?? 0)}
             ${metricCard('Messages total', health.totalMessages ?? 0)}
-            ${metricCard('Conversations', health.totalConversations ?? 0)}
             ${metricCard('Active 24h', health.activeUsers ?? 0)}
+            ${metricCard('Failed webhooks', health.failedWebhooks ?? 0)}
+            ${metricCard('Failed AI replies', health.failedAiReplies ?? 0)}
             ${metricCard('OAuth failures', health.oauthFailures ?? 0)}
-            ${metricCard('Web app msgs', health.webMessages ?? 0)}
-            ${metricCard('Telegram msgs', health.telegramMessages ?? 0)}
           </div>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="reports" hidden>
-        <div class="admin-card">
-          <h3>Reports</h3>
-          <p>Track spam, abuse, bad answers, wrong actions, and scam reports here. We can connect a dedicated report table next if you want the moderation queue live.</p>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="insights" hidden>
-        <div class="admin-card">
-          <h3>Insights</h3>
-          <p>Growth trends, onboarding drop-off, retention, and command usage can live here. This section is scaffolded and ready for the next pass.</p>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="inbox" hidden>
-        <div class="admin-card">
-          <h3>Inbox</h3>
-          <p>Waitlist, contact form submissions, and internal notes can be routed here. This page will read from your admin-backed tables once you connect them.</p>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="newsletter" hidden>
-        <div class="admin-card">
-          <h3>Newsletter</h3>
-          <p>Turn waitlist signups into announcements and product notes. This is a front-end scaffold ready for server-side wiring.</p>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="brand" hidden>
-        <div class="admin-card">
-          <h3>Landing hero & logos</h3>
-          <p>Everything on the public landing page is editable here.</p>
-          <form data-admin-form="brand" class="admin-form">
-            <label>Business name <input name="business_name" value="${escapeAttr(brand.business_name || 'SurMe')}" /></label>
-            <label>Hero headline (H1) <input name="hero_headline" value="${escapeAttr(brand.hero_headline || '')}" placeholder="Leave blank to use default" /></label>
-            <label>Hero subtitle <input name="hero_subtitle" value="${escapeAttr(brand.hero_subtitle || '')}" placeholder="Leave blank to fall back to tagline" /></label>
-            <label>Tagline <input name="tagline" value="${escapeAttr(brand.tagline || 'Your AI assistant on Telegram')}" /></label>
-            <label>Nav / global logo URL <input name="logo_url" value="${escapeAttr(brand.logo_url || '')}" /></label>
-            <label>Phone-mockup logo URL <input name="phone_logo_url" value="${escapeAttr(brand.phone_logo_url || '')}" /></label>
-            <label>Landing background image URL <input name="bg_image_url" value="${escapeAttr(brand.bg_image_url || '')}" /></label>
-            <div class="admin-actions">
-              <button class="button primary" type="submit">Save branding</button>
-            </div>
-          </form>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="sections" hidden>
-        <div class="admin-card">
-          <h3>Landing sections</h3>
-          <p>Use a save-order list for now.</p>
-          <form data-admin-form="sections" class="admin-form">
-            <label>Sections JSON
-              <textarea name="sections_json" rows="18" placeholder='[{"title":"Who is it for","items":[{"title":"Busy founders","description":"Offload reminders, research, and follow-ups without leaving Telegram."}]}]'>${escapeHtml(JSON.stringify(sections, null, 2))}</textarea>
-            </label>
-            <div class="admin-actions">
-              <button class="button primary" type="submit">Save sections</button>
-            </div>
-          </form>
+          <div class="admin-log-list">
+            ${recentFailures.length ? recentFailures.map((row) => `<div class="admin-log error"><strong>${escapeHtml(row.event_type || 'failure')}</strong><span>${escapeHtml(row.error_message || 'Unknown issue')}</span></div>`).join('') : '<p class="admin-empty">No recent failures.</p>'}
+          </div>
         </div>
       </section>
     </div>
@@ -905,7 +694,9 @@ function renderUserCard(user) {
       <div class="admin-user-main">
         <strong>${escapeHtml(user.display_name || user.email || 'Unknown')}</strong>
         <span>${escapeHtml(user.email || 'No email')}</span>
-        <small>Telegram: ${user.telegram_connected ? 'linked' : 'not linked'} · Google: ${user.google_connected ? 'linked' : 'not linked'} · Messages: ${user.message_count || 0}</small>
+        <small>Telegram: ${user.telegram_connected ? 'linked' : 'not linked'} · Telegram ID: ${escapeHtml(String(user.telegram_chat_id || '—'))}</small>
+        <small>Calendar: ${user.google_connected ? 'linked' : 'not linked'}${user.google_email ? ` · ${escapeHtml(user.google_email)}` : ''}</small>
+        <small>Messages: ${user.message_count || 0}${user.latest_oauth_error ? ` · OAuth note: ${escapeHtml(user.latest_oauth_error)}` : ''}</small>
       </div>
       <div class="admin-user-actions">
         <button class="button secondary" type="button" data-user-action="disconnect_telegram" data-user-id="${escapeAttr(user.user_id)}">Disconnect Telegram</button>
@@ -955,3 +746,5 @@ window.addEventListener('scroll', () => {
 renderDemo('schedule')
 setAuthMode('login')
 initSupabase()
+
+

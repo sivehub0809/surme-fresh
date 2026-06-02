@@ -44,7 +44,7 @@ module.exports = async function webhook(req, res) {
     }
 
     const chat = linked.chat || (await loadTelegramChat(chatId))
-    const reply = clampTelegramMessage(await buildReply(text, chat, linked.user_id))
+    const reply = clampTelegramMessage(await buildReply(text, chat, linked.user_id, chatId))
 
     await sendTelegramMessage(chatId, reply)
     void persistTelegramTurn({
@@ -58,6 +58,13 @@ module.exports = async function webhook(req, res) {
     return res.status(200).json({ ok: true })
   } catch (error) {
     console.error('Telegram webhook failed:', error)
+    await logRuntimeEvent({
+      eventType: 'telegram_webhook_failed',
+      chatId,
+      success: false,
+      errorMessage: error.message || 'Telegram webhook failed',
+      metadata: { text },
+    }).catch((logError) => console.error('Failed to log webhook failure:', logError))
     try {
       await sendTelegramMessage(chatId, 'SurMe is online, but I hit a temporary issue. Please try again in a moment.')
     } catch (sendError) {
@@ -131,7 +138,7 @@ async function resolveTelegramUser(chatId, from, text) {
   return { ok: false, message: 'Telegram is connected to your SurMe account. Send me a task and I will help.' }
 }
 
-async function buildReply(text, chat, userId) {
+async function buildReply(text, chat, userId, chatId) {
   if (text.startsWith('/start')) {
     return [
       'SurMe is connected.',
@@ -144,6 +151,14 @@ async function buildReply(text, chat, userId) {
   }
 
   if (!process.env.GOOGLE_GEMINI_API_KEY) {
+    await logRuntimeEvent({
+      eventType: 'telegram_ai_failed',
+      userId,
+      chatId,
+      success: false,
+      errorMessage: 'GOOGLE_GEMINI_API_KEY is not configured',
+      metadata: { reason: 'missing_gemini_key', text },
+    })
     return buildHelpfulFallbackReply(text)
   }
 
@@ -163,6 +178,14 @@ async function buildReply(text, chat, userId) {
     return clampTelegramMessage(reply || buildHelpfulFallbackReply(text))
   } catch (error) {
     console.error('Gemini request failed:', error)
+    await logRuntimeEvent({
+      eventType: 'telegram_ai_failed',
+      userId,
+      chatId,
+      success: false,
+      errorMessage: error.message || 'Gemini request failed',
+      metadata: { text },
+    })
     return buildHelpfulFallbackReply(text)
   }
 }
@@ -205,16 +228,16 @@ function buildConversationPrompt(chat, text) {
 
 function buildHelpfulFallbackReply(text) {
   const task = String(text || '').trim()
-  if (!task) return "I'm here. Send me the task again and I'll handle it."
+  if (!task) return "I'm here. Send me the task again and I'll help."
 
   const lower = task.toLowerCase()
 
   if (['hi', 'hello', 'hey', 'yo', 'sup', 'good morning', 'good afternoon', 'good evening'].some((greeting) => lower === greeting || lower.startsWith(`${greeting} `))) {
-    return "Hey. I'm here and ready. Tell me what you want done."
+    return "Hey. I'm here and ready. What do you want to do?"
   }
 
   if (lower === 'yes' || lower === 'yep' || lower === 'sure' || lower === 'okay' || lower === 'ok' || lower === 'alright') {
-    return "Got it. Send me the exact time, timezone, and who should be invited, and I'll help set it up."
+    return "Got it. Send me the exact time, timezone, and who should be invited."
   }
 
   if (lower.includes('physics')) {
@@ -268,9 +291,9 @@ function buildHelpfulFallbackReply(text) {
   }
 
   return [
-    'I got your message.',
+    'I’m here.',
     '',
-    "Tell me the result you want, and I'll help step by step.",
+    "Send me the result you want, and I'll help step by step.",
   ].join('\n')
 }
 
@@ -351,10 +374,34 @@ async function sendTelegramMessage(chatId, text) {
 
   if (!response.ok) {
     console.error(`Telegram sendMessage failed: ${response.status} ${await response.text()}`)
+    await logRuntimeEvent({
+      eventType: 'telegram_webhook_failed',
+      chatId,
+      success: false,
+      errorMessage: `Telegram sendMessage failed: ${response.status}`,
+      metadata: { text: clampTelegramMessage(text) },
+    }).catch((error) => console.error('Failed to log telegram send error:', error))
     return false
   }
 
   return true
+}
+
+async function logRuntimeEvent({ eventType, userId = null, chatId = null, success = false, errorMessage = null, metadata = {} }) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return
+  await supabaseFetch('/rest/v1/runtime_events', {
+    method: 'POST',
+    service: true,
+    body: JSON.stringify({
+      source: 'telegram',
+      event_type: eventType,
+      user_id: userId,
+      telegram_chat_id: chatId,
+      success,
+      error_message: errorMessage,
+      metadata,
+    }),
+  })
 }
 
 function clampTelegramMessage(text) {

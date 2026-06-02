@@ -59,7 +59,7 @@ module.exports = async function dashboard(req, res) {
 }
 
 async function loadDashboard() {
-  const [settingsRows, profilesRows, chatsRows, messagesRows, conversationsRows, oauthRows, tokensRows, scheduleRows] = await Promise.all([
+  const [settingsRows, profilesRows, chatsRows, messagesRows, conversationsRows, oauthRows, tokensRows, scheduleRows, runtimeRows] = await Promise.all([
     fetchRows('/rest/v1/surme_settings?id=eq.1&select=*', true),
     fetchRows('/rest/v1/user_profiles?select=*', true),
     fetchRows('/rest/v1/telegram_chats?select=*', true),
@@ -68,6 +68,7 @@ async function loadDashboard() {
     fetchRows('/rest/v1/oauth_events?select=*', true),
     fetchRows('/rest/v1/google_oauth_tokens?select=user_id,email,updated_at', true),
     fetchRows('/rest/v1/telegram_scheduled_greetings?id=eq.1&select=*', true),
+    fetchRows('/rest/v1/runtime_events?select=*', true),
   ])
 
   const settings = settingsRows[0] || emptySettings()
@@ -78,6 +79,7 @@ async function loadDashboard() {
   const conversations = conversationsRows || []
   const oauth = oauthRows || []
   const tokens = tokensRows || []
+  const runtime = runtimeRows || []
 
   const telegramMap = new Map(chats.map((row) => [String(row.user_id || ''), row]))
   const googleMap = new Map(tokens.map((row) => [String(row.user_id || ''), row]))
@@ -104,11 +106,13 @@ async function loadDashboard() {
       primary_role: profile.primary_role || '',
       timezone: profile.timezone || 'Asia/Tokyo',
       telegram_chat_id: profile.telegram_chat_id || telegram?.telegram_chat_id || null,
+      telegram_user_id: telegram?.telegram_user_id || null,
       google_email: profile.google_email || google?.email || null,
       telegram_connected: Boolean(telegram || profile.telegram_chat_id),
       google_connected: Boolean(google),
       message_count: messageCounts.get(key) || 0,
       last_message_at: lastMessageAt.get(key) ? new Date(lastMessageAt.get(key)).toISOString() : null,
+      latest_oauth_error: oauth.find((row) => String(row.user_id || '') === key && row.success === false)?.error_message || null,
     }
   })
 
@@ -122,6 +126,8 @@ async function loadDashboard() {
       .filter(Boolean)
   ).size
   const oauthFailures = oauth.filter((row) => !row.success).length
+  const failedWebhooks = runtime.filter((row) => !row.success && row.event_type === 'telegram_webhook_failed').length
+  const failedAiReplies = runtime.filter((row) => !row.success && row.event_type === 'telegram_ai_failed').length
   const webMessages = conversations.filter((row) => row.source === 'web').length
   const telegramMessages = conversations.filter((row) => row.source === 'telegram').length
 
@@ -134,12 +140,14 @@ async function loadDashboard() {
       totalConversations,
       activeUsers,
       oauthFailures,
+      failedWebhooks,
+      failedAiReplies,
       webMessages,
       telegramMessages,
     },
     users: userRows.sort((a, b) => b.message_count - a.message_count),
     oauthEvents: oauth.slice(0, 24),
-    recentFailures: oauth.filter((row) => !row.success).slice(0, 10),
+    recentFailures: runtime.filter((row) => !row.success).slice(0, 10),
   }
 }
 

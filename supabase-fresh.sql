@@ -102,6 +102,18 @@ create table if not exists public.oauth_events (
   created_at timestamptz default now()
 );
 
+create table if not exists public.runtime_events (
+  id uuid primary key default gen_random_uuid(),
+  source text not null default 'telegram',
+  event_type text not null,
+  user_id uuid references auth.users(id) on delete set null,
+  telegram_chat_id bigint,
+  success boolean default false,
+  error_message text,
+  metadata jsonb default '{}',
+  created_at timestamptz default now()
+);
+
 create table if not exists public.surme_settings (
   id int primary key default 1,
   system_prompt text not null default 'You are SurMe, a personal AI assistant powered by Nilaamio. You remember the user, execute useful actions, and confirm before irreversible or sensitive actions.',
@@ -154,6 +166,7 @@ alter table public.user_memories enable row level security;
 alter table public.google_oauth_states enable row level security;
 alter table public.google_oauth_tokens enable row level security;
 alter table public.oauth_events enable row level security;
+alter table public.runtime_events enable row level security;
 alter table public.surme_settings enable row level security;
 alter table public.telegram_scheduled_greetings enable row level security;
 
