@@ -1,422 +1,317 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="SurMe is a calm Telegram-first AI assistant with a web app for login, onboarding, Google Calendar, and admin control."
+      content="SurMe is a Telegram-first personal AI assistant for scheduling, research, communication, and connected daily workflows."
     />
     <title>SurMe | Personal AI Assistant</title>
-    <link rel="stylesheet" href="styles.css?v=5" />
+    <link rel="stylesheet" href="styles.css?v=7" />
   </head>
   <body>
-    <header class="site-header" data-header>
-      <a class="brand" href="#top" aria-label="SurMe home">
-        <img class="brand-mark" src="assets/surme-logo.jpg" alt="" aria-hidden="true" />
-        <span class="brand-copy">
-          <span>SurMe</span>
-          <small>by <a class="brand-link" href="https://nilaamio.lovable.app/" target="_blank" rel="noreferrer">Nilaamio</a></small>
+    <div class="sky-orb orb-left" aria-hidden="true"></div>
+    <div class="sky-orb orb-right" aria-hidden="true"></div>
+
+    <header class="top-nav glass soft" data-top-nav>
+      <a class="brand" href="/" data-route-link>
+        <span class="brand-tile convex">
+          <img src="assets/surme-logo.jpg" alt="" />
+        </span>
+        <span>
+          <strong>SurMe</strong>
+          <small>powered by Nilaamio</small>
         </span>
       </a>
-      <div class="header-center">
-        <nav class="site-nav" aria-label="Primary navigation">
-          <a href="#capabilities">Capabilities</a>
-          <a href="#workflow">Workflow</a>
-          <a href="#security">Security</a>
-          <a href="#contact">Contact</a>
-        </nav>
-        <div class="message-count-pill" aria-live="polite">
-          <span class="dot"></span>
-          <strong data-message-count>0</strong>
-          <span>messages and counting</span>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button class="header-action ghost" type="button" data-open-auth>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z" />
-          </svg>
-          <span data-auth-label>Sign in</span>
-        </button>
-        <button class="header-action" type="button" data-open-dashboard-header hidden>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M4 5h16v14H4V5Zm3 3h5v3H7V8Zm0 6h10v2H7v-2Z" />
-          </svg>
-          <span>Dashboard</span>
-        </button>
-        <button class="header-action admin-hidden" type="button" data-open-admin>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm1 6v4l3 2-1 1.7-4-2.7V8h2Z" />
-          </svg>
-          <span>Admin</span>
-        </button>
-        <button class="header-action" type="button" data-sign-out hidden>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M10 17h2V7h-2v10Zm5-11v2h3v8h-3v2h5V6h-5Zm-9 5 4-4v3h6v2H10v3l-4-4Z" />
-          </svg>
-          <span>Sign out</span>
-        </button>
-        <a class="header-action" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M21.8 4.3 18.5 20c-.2 1-1.2 1.2-2 .7l-5.4-4-2.6 2.5c-.3.3-.5.5-1.1.5l.4-5.6L18 6.9c.5-.4-.1-.6-.7-.2L4.8 14.5 1.5 13.4c-.9-.3-.9-.9.2-1.3L20.4 4c.8-.3 1.6.2 1.4.3Z" />
-          </svg>
-          <span>Open Telegram</span>
-        </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="/#features" data-route-link>Features</a>
+        <a href="/#workflow" data-route-link>How it works</a>
+        <a href="/policy" data-route-link>Privacy</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="pill glass-pill" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">Telegram</a>
+        <a class="pill primary-pill" href="/login" data-route-link data-auth-entry>Sign in</a>
+        <a class="pill glass-pill auth-only" href="/settings" data-route-link hidden data-user-label>Account</a>
       </div>
     </header>
 
-    <main id="top">
-      <section class="hero section-band">
-        <div class="hero-copy">
-          <p class="eyebrow">Telegram-first assistant</p>
-          <h1>
-            meet SurMe.
-            <span class="hero-gradient">it moves the day</span>
-            from inside your texts.
-          </h1>
-          <p class="hero-lede">
-            A calm executive assistant for students, founders, CEOs, and working professionals.
-            SurMe handles scheduling, calendar follow-ups, chat questions, and image reads without making you leave Telegram.
-          </p>
-          <p class="hero-note">
-            Blue-sky visual system, Cambodia-time scheduling language, a quiet fallback when Gemini needs one more second, and a top-right sign in state that changes when you log in.
-          </p>
-        <div class="hero-actions" aria-label="Primary actions">
-            <a class="button primary" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="m22 2-7.7 20-4.4-8.6L2 9.6 22 2Zm-7.9 16.1 3.4-8.8-6.1 5.1 2.7 3.7Z" />
-              </svg>
-              Start in Telegram
-            </a>
-            <button class="button secondary" type="button" data-open-dashboard>
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M4 5h16v14H4V5Zm3 3h5v3H7V8Zm0 6h10v2H7v-2Z" />
-              </svg>
-              Open Web App
-            </button>
-            <a class="button tertiary" href="#demo">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v9a2.5 2.5 0 0 1-2.5 2.5H9l-5 4v-4.5A2.5 2.5 0 0 1 2 14.5v-9Z" />
-              </svg>
-              Try the flow
-            </a>
+    <main>
+      <section class="route page landing-page" data-route="home">
+        <div class="hero-shell">
+          <div class="live-chip glass standard">
+            <span class="pulse-dot"></span>
+            <strong data-message-count data-counter-skeleton>...</strong>
+            <span>people using SurMe</span>
           </div>
-          <div class="trust-row" aria-label="SurMe principles">
-            <span>Telegram-first</span>
-            <span>Google Calendar ready</span>
-            <span>Quiet fallback</span>
+
+          <div class="hero-grid">
+            <div class="hero-copy">
+              <p class="eyebrow">Telegram-first personal AI</p>
+              <h1>Your calm assistant for <span>getting things done</span>.</h1>
+              <p class="hero-lede">
+                SurMe turns plain text into scheduling help, research briefs, email drafts, travel planning, and connected follow-ups from Telegram or the web.
+              </p>
+              <div class="hero-actions">
+                <a class="pill primary-pill big guest-only" href="/login" data-route-link>Start with SurMe</a>
+                <a class="pill primary-pill big auth-only" href="/settings" data-route-link hidden>Open settings</a>
+                <a class="pill glass-pill big" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">Open Telegram</a>
+              </div>
+              <p class="signed-note auth-only" hidden>
+                Signed in as <strong data-session-email></strong>. Your web controls are ready.
+              </p>
+            </div>
+
+            <div class="phone-stage" aria-label="Decorative Telegram assistant preview">
+              <div class="hero-glow"></div>
+              <div class="glass-icon float-slow tile-one convex" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m12 2 1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2Zm7 12 1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z"/></svg>
+              </div>
+              <div class="glass-icon float-slow tile-two convex" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 5h14v10H8l-3 3V5Zm3 4h8v2H8V9Zm0 4h5v2H8v-2Z"/></svg>
+              </div>
+              <div class="glass-icon float-slow tile-three convex" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M8 7V4h8v3h3v9a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V7h3Zm2 0h4V6h-4v1Zm-1 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm-5 3h4v-2h-4v2Z"/></svg>
+              </div>
+              <div class="phone">
+                <div class="notch"></div>
+                <div class="phone-screen">
+                  <div class="tg-header">
+                    <span class="avatar">S</span>
+                    <div>
+                      <strong>SurMe</strong>
+                      <small>online now</small>
+                    </div>
+                  </div>
+                  <div class="bubble user">Move my meeting and draft the update.</div>
+                  <div class="bubble assistant">I found the event, checked your calendar, and prepared a warm note. Want me to send it?</div>
+                  <div class="bubble user">Yes, and remind me tomorrow.</div>
+                  <div class="bubble assistant">Done. I added the reminder.</div>
+                  <div class="bubble user">Keep it short please.</div>
+                  <div class="bubble assistant typing"><span></span><span></span><span></span></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="hero-visual" aria-label="SurMe assistant preview">
-          <img src="assets/surme-product-visual.svg" alt="SurMe Telegram and Web App assistant interface preview" />
-        </div>
+
+        <section class="section" id="features">
+          <div class="section-heading">
+            <p class="eyebrow">Solution</p>
+            <h2>One execution layer for the busy parts of life.</h2>
+          </div>
+          <div class="card-grid three">
+            <article class="glass-card lift">
+              <span class="icon-tile convex">1</span>
+              <h3>Scheduling</h3>
+              <p>Move meetings, plan work blocks, and prepare calendar updates with approval before anything sensitive happens.</p>
+            </article>
+            <article class="glass-card lift">
+              <span class="icon-tile convex">2</span>
+              <h3>Research</h3>
+              <p>Ask for synthesis instead of tabs. SurMe gathers context and returns action-ready summaries.</p>
+            </article>
+            <article class="glass-card lift">
+              <span class="icon-tile convex">3</span>
+              <h3>Communication</h3>
+              <p>Draft email, follow-ups, and concise replies in a tone that matches your preferences.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="workflow">
+          <div class="section-heading">
+            <p class="eyebrow">How it works</p>
+            <h2>Text once. Let SurMe organize the next move.</h2>
+          </div>
+          <div class="card-grid three">
+            <article class="glass-card">
+              <span class="number-badge">01</span>
+              <h3>Create your account</h3>
+              <p>Sign in with Google or email so SurMe can keep your preferences private to you.</p>
+            </article>
+            <article class="glass-card">
+              <span class="number-badge">02</span>
+              <h3>Link Telegram</h3>
+              <p>Use a one-time code to connect your assistant to the place you already chat.</p>
+            </article>
+            <article class="glass-card">
+              <span class="number-badge">03</span>
+              <h3>Connect tools</h3>
+              <p>Add Google Calendar when you want SurMe to help with scheduling and events.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="integrations glass strong">
+            <div>
+              <p class="eyebrow">Integrations</p>
+              <h2>Telegram, Google Calendar, and the web app stay in sync.</h2>
+              <p>SurMe keeps the interface calm: chat happens in Telegram, controls live on the website, and admin work stays separate.</p>
+            </div>
+            <a class="pill glass-pill" href="/policy" data-route-link>Learn more</a>
+            <div class="node-line" aria-hidden="true">
+              <span class="glass-icon node integration-sequence-1" title="Telegram">TG</span>
+              <span class="glass-icon node integration-sequence-2" title="Google Calendar">GC</span>
+              <span class="glass-icon node integration-sequence-3" title="Gmail">GM</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="section faq">
+          <div class="section-heading">
+            <p class="eyebrow">FAQ</p>
+            <h2>Useful answers before you start.</h2>
+          </div>
+          <details class="glass-card">
+            <summary>Does SurMe sell data?</summary>
+            <p>No. The product principle is simple: user data is not sold.</p>
+          </details>
+          <details class="glass-card">
+            <summary>Where does chat happen?</summary>
+            <p>Chat happens in Telegram. The website is for auth, onboarding, settings, privacy, and admin control.</p>
+          </details>
+          <details class="glass-card">
+            <summary>Can I delete or disconnect things?</summary>
+            <p>Yes. Settings includes profile controls, memory visibility, integration disconnects, and account deletion.</p>
+          </details>
+        </section>
+
+        <section class="section contact-grid">
+          <form class="glass strong site-form" data-form="newsletter">
+            <span class="icon-tile convex">✦</span>
+            <h2>Stay in the loop</h2>
+            <div class="inline-form">
+              <input name="email" type="email" placeholder="you@example.com" required />
+              <button class="pill primary-pill" type="submit">Join</button>
+            </div>
+          </form>
+          <form class="glass strong site-form" data-form="contact">
+            <h2>Get in touch</h2>
+            <div class="two-col">
+              <input name="name" placeholder="Name" required />
+              <input name="email" type="email" placeholder="Email" required />
+            </div>
+            <input name="subject" placeholder="Subject" required />
+            <textarea name="message" rows="4" placeholder="What should SurMe help with?" required></textarea>
+            <button class="pill primary-pill" type="submit">Send</button>
+          </form>
+        </section>
       </section>
 
-      <section class="metrics strip" aria-label="Product highlights">
-        <div>
-          <strong>4</strong>
-          <span>execution lanes</span>
-        </div>
-        <div>
-          <strong>2</strong>
-          <span>interfaces in sync</span>
-        </div>
-        <div>
-          <strong>24/7</strong>
-          <span>assistant continuity</span>
-        </div>
-        <div>
-          <strong>RLS</strong>
-          <span>privacy boundary</span>
-        </div>
-      </section>
-
-      <section class="section" id="capabilities">
-        <div class="section-heading">
-          <p class="eyebrow">Solution and capabilities</p>
-          <h2>One assistant for the tasks that usually eat the day.</h2>
-          <p>
-            SurMe converts short text intents into structured actions, keeping confirmations,
-            context, and history connected across Telegram and the Web App.
-          </p>
-        </div>
-        <div class="capability-grid">
-          <article class="capability-card">
-            <span class="icon-wrap">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M7 2v3M17 2v3M4 9h16M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
-              </svg>
-            </span>
-            <h3>Memory that sticks</h3>
-            <p>SurMe remembers your tone, timezone, habits, and the things you keep coming back to.</p>
-          </article>
-          <article class="capability-card">
-            <span class="icon-wrap coral">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M3 11 21 3l-4 18-5-7-7 5 3-7-5-1Z" />
-              </svg>
-            </span>
-            <h3>Scam radar</h3>
-            <p>Spot suspicious links, fake offers, and shady asks before you tap or reply.</p>
-          </article>
-          <article class="capability-card">
-            <span class="icon-wrap blue">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M4 6h16v12H4V6Zm0 0 8 7 8-7" />
-              </svg>
-            </span>
-            <h3>In your messages</h3>
-            <p>Web app plus Telegram bot, with voice notes and photos supported on the Telegram side.</p>
-          </article>
-          <article class="capability-card">
-            <span class="icon-wrap gold">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M10.5 18a7.5 7.5 0 1 1 5.3-2.2L21 21l-3 0-4-4" />
-              </svg>
-            </span>
-            <h3>Action-ready replies</h3>
-            <p>Short, helpful answers first. Longer work like email, scheduling, and research follows when needed.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="demo-section" id="demo">
-        <div class="demo-copy">
-          <p class="eyebrow">Intent to action</p>
-          <h2>Type it once. SurMe builds the execution path.</h2>
-          <p>
-            The assistant reads your request, retrieves your saved preferences and current tasks,
-            then chooses the safest next action. Sensitive steps wait for approval.
-          </p>
-          <div class="demo-prompts" role="tablist" aria-label="Demo prompts">
-            <button class="prompt-chip active" type="button" data-demo="schedule">Schedule</button>
-            <button class="prompt-chip" type="button" data-demo="travel">Travel</button>
-            <button class="prompt-chip" type="button" data-demo="email">Email</button>
-            <button class="prompt-chip" type="button" data-demo="research">Research</button>
-          </div>
-        </div>
-        <div class="assistant-panel" aria-live="polite">
-          <div class="panel-topbar">
-            <span class="status-dot"></span>
-            <span>SurMe live flow</span>
-          </div>
-          <div class="chat-feed" data-chat-feed></div>
-          <div class="action-trace" data-action-trace></div>
-        </div>
-      </section>
-
-      <section class="section" id="workflow">
-        <div class="section-heading compact">
-          <p class="eyebrow">Always-on continuity</p>
-          <h2>Telegram and Web App share one memory.</h2>
-        </div>
-        <div class="workflow-grid">
-          <div class="workflow-step">
-            <span>01</span>
-            <h3>Intent lands</h3>
-            <p>A message arrives from Telegram or the Web App and resolves to the same user context.</p>
-          </div>
-          <div class="workflow-step">
-            <span>02</span>
-            <h3>Context loads</h3>
-            <p>SurMe pulls profile, memories, recent messages, active tasks, and schedule, with timezone-aware planning for Cambodia and beyond.</p>
-          </div>
-          <div class="workflow-step">
-            <span>03</span>
-            <h3>Action runs</h3>
-            <p>The execution layer calls calendar, email, travel, Telegram, or research providers.</p>
-          </div>
-          <div class="workflow-step">
-            <span>04</span>
-            <h3>State syncs</h3>
-            <p>Messages, confirmations, tasks, and results appear in both interfaces.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="security-section" id="security">
-        <div>
-          <p class="eyebrow">Data principles</p>
-          <h2>Built around trust, not data resale.</h2>
-        </div>
-        <div class="security-list">
-          <div>
-            <strong>No data selling</strong>
-            <span>User data is not sold. Integrations receive only what is needed to execute the task.</span>
-          </div>
-          <div>
-            <strong>Encrypted storage</strong>
-            <span>Sensitive chats, tokens, drafts, bookings, and pending actions use encrypted fields.</span>
-          </div>
-          <div>
-            <strong>Row-level security</strong>
-            <span>Profiles, messages, memories, tasks, schedules, and tokens are scoped per user.</span>
-          </div>
-          <div>
-            <strong>User control</strong>
-            <span>Users can disconnect integrations and delete their account data.</span>
+      <section class="route auth-page" data-route="login" hidden>
+        <div class="blob-backdrop" aria-hidden="true"><span></span><span></span><span></span></div>
+        <a class="corner-pill left glass-pill" href="/" data-route-link>Back</a>
+        <a class="corner-pill right glass-pill" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">Telegram</a>
+        <div class="auth-card glass strong">
+          <span class="brand-tile large convex"><img src="assets/surme-logo.jpg" alt="" /></span>
+          <span class="sparkle-chip">Secure assistant account</span>
+          <h1>Sign in to your <span>SurMe</span>.</h1>
+          <p class="route-copy">Use Google or email. After sign-up, you will continue into onboarding and Telegram connection.</p>
+          <p class="status-box" data-auth-status hidden></p>
+          <button class="provider-pill" type="button" data-google-login>Continue with Google</button>
+          <div class="divider"><span>or</span></div>
+          <a class="provider-pill" href="/connect-telegram" data-route-link>Use Telegram link code</a>
+          <form class="site-form auth-form" data-auth-form>
+            <input name="email" type="email" placeholder="Email" autocomplete="email" required />
+            <input name="password" type="password" placeholder="Password" autocomplete="current-password" minlength="6" required data-password-input />
+            <button class="pill primary-pill big" type="submit" data-auth-submit>Sign in</button>
+          </form>
+          <div class="auth-toggle">
+            <button class="text-button active" type="button" data-auth-mode="login">Sign in</button>
+            <button class="text-button" type="button" data-auth-mode="signup">Sign up</button>
+            <button class="text-button" type="button" data-auth-mode="reset">Reset</button>
           </div>
         </div>
       </section>
 
-      <section class="contact-section" id="contact">
-        <div class="contact-copy">
-          <p class="eyebrow">Get set up</p>
-          <h2>Use the pieces that already work.</h2>
-          <p>
-            Sign in to change your account, finish onboarding, connect Google Calendar, or jump back into Telegram.
-            Everything here points to a real step in the setup flow.
-            </p>
+      <section class="route onboarding-page" data-route="onboarding" hidden>
+        <div class="blob-backdrop" aria-hidden="true"><span></span><span></span><span></span></div>
+        <header class="flow-header">
+          <a class="glass-pill" href="/login" data-route-link>Back</a>
+          <div class="progress" data-progress></div>
+        </header>
+        <form class="onboarding-flow" data-onboarding-form>
+          <div data-onboarding-step></div>
+          <footer class="flow-footer">
+            <button class="pill glass-pill" type="button" data-step-back>Back</button>
+            <button class="pill primary-pill big" type="button" data-step-next>Next</button>
+          </footer>
+        </form>
+      </section>
+
+      <section class="route connect-page" data-route="connect-telegram" hidden>
+        <div class="blob-backdrop" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="connect-card glass strong">
+          <span class="icon-tile large convex">TG</span>
+          <span class="status-chip"><span class="muted-dot"></span><span data-link-status>waiting</span></span>
+          <h1>Connect Telegram</h1>
+          <p>Generate a one-time code, open SurMe in Telegram, and send the code to link your account.</p>
+          <button class="pill primary-pill big" type="button" data-create-telegram-link>Generate link code</button>
+          <div class="code-panel" data-telegram-code-panel hidden>
+            <small>One-time code</small>
+            <strong data-telegram-token>------</strong>
+            <div class="code-actions">
+              <button class="pill glass-pill icon-copy" type="button" data-copy-telegram-code aria-label="Copy code">
+                <svg viewBox="0 0 24 24"><path d="M8 7h10v13H8V7Zm-2 9H4V4h10v2H6v10Z"/></svg>
+                Copy
+              </button>
+              <a class="pill primary-pill" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer" data-telegram-url>Open Telegram</a>
+            </div>
+          </div>
+          <a class="skip-link" href="/settings" data-route-link>skip for now</a>
         </div>
-        <div class="setup-panel">
-          <div class="setup-panel-top">
-            <span class="status-dot"></span>
-            <strong>Ready for setup</strong>
-            <span class="setup-muted">changes with auth state</span>
-          </div>
-          <div class="setup-actions">
-            <button class="button primary" type="button" data-open-dashboard>
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M4 5h16v14H4V5Zm3 3h5v3H7V8Zm0 6h10v2H7v-2Z" />
-              </svg>
-              Open Web App
-            </button>
-            <button class="button secondary" type="button" data-open-auth>
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z" />
-              </svg>
-              Sign in
-            </button>
-            <a class="button tertiary" href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="m22 2-7.7 20-4.4-8.6L2 9.6 22 2Zm-7.9 16.1 3.4-8.8-6.1 5.1 2.7 3.7Z" />
-              </svg>
-              Start Telegram
-            </a>
-          </div>
-          <div class="setup-tags">
-            <span>Onboarding</span>
-            <span>Calendar</span>
-            <span>Admin console</span>
-            <span>Telegram</span>
-          </div>
+      </section>
+
+      <section class="route settings-page" data-route="settings" hidden>
+        <div class="settings-shell">
+          <header class="settings-header">
+            <a class="round-button glass-pill" href="/" data-route-link aria-label="Back">‹</a>
+            <div>
+              <p class="eyebrow">Account</p>
+              <h1>Settings</h1>
+            </div>
+          </header>
+          <div data-settings-root></div>
         </div>
+      </section>
+
+      <section class="route admin-page" data-route="admin-surme" hidden>
+        <div class="admin-shell glass strong">
+          <header class="admin-header">
+            <div>
+              <p class="eyebrow">Admin</p>
+              <h1>Growth Engine</h1>
+            </div>
+            <button class="pill glass-pill" type="button" data-admin-refresh>Refresh</button>
+          </header>
+          <div class="tab-bar" data-admin-tabs></div>
+          <div data-admin-root></div>
+        </div>
+      </section>
+
+      <section class="route policy-page" data-route="policy" hidden>
+        <article class="policy-card glass strong">
+          <p class="eyebrow">Privacy</p>
+          <h1>SurMe Data Principles</h1>
+          <p>SurMe is built on trust. We do not sell user data. Chats and account data are protected with row-level security, and sensitive integration data is handled only so the assistant can work.</p>
+          <p>Data may be shared with trusted AI model providers and integrations, including OpenAI, Google Gemini, Google, and Telegram, strictly for assistant functionality.</p>
+          <p>Users can disconnect integrations or delete their account data from Settings. The product should always make these controls visible and understandable.</p>
+          <a class="pill primary-pill" href="/" data-route-link>Back home</a>
+        </article>
       </section>
     </main>
 
-    <footer class="site-footer">
+    <footer class="footer">
       <span>SurMe</span>
-      <span>Personal AI assistant powered by <a class="footer-link" href="https://nilaamio.lovable.app/" target="_blank" rel="noreferrer">Nilaamio</a>.</span>
+      <a href="/policy" data-route-link>Policy</a>
       <a href="https://t.me/surme1_bot" target="_blank" rel="noreferrer">Telegram</a>
+      <span>Nilaamio</span>
     </footer>
 
-    <div class="toast" data-toast role="status" aria-live="polite"></div>
-    <section class="modal-layer" data-auth-modal hidden>
-      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-        <button class="modal-close" type="button" data-close-auth aria-label="Close">×</button>
-        <p class="eyebrow">SurMe account</p>
-        <h2 id="auth-title">Sign in</h2>
-        <p class="modal-subtitle">Your session is saved on this browser, so you stay authenticated until you sign out.</p>
-        <p class="modal-status" data-auth-status hidden></p>
-        <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
-          <button class="prompt-chip active" type="button" data-auth-mode="login">Log in</button>
-          <button class="prompt-chip" type="button" data-auth-mode="signup">Sign up</button>
-          <button class="prompt-chip" type="button" data-auth-mode="reset">Forgot password</button>
-        </div>
-        <button class="button secondary full" type="button" data-google-login>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4Z" fill="#4285F4"/>
-            <path d="M12 22c2.7 0 5-0.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22Z" fill="#34A853"/>
-            <path d="M6.4 14a6 6 0 0 1 0-3.9V7.5H3.1a10 10 0 0 0 0 9.1L6.4 14Z" fill="#FBBC05"/>
-            <path d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A9.7 9.7 0 0 0 12 2a10 10 0 0 0-8.9 5.5l3.3 2.6C7.2 7.7 9.4 5.9 12 5.9Z" fill="#EA4335"/>
-          </svg>
-          Continue with Google
-        </button>
-        <form class="site-form modal-form" data-auth-form>
-          <label>
-            Email
-            <input name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
-          </label>
-          <label data-password-row>
-            Password
-            <input name="password" type="password" placeholder="Your password" autocomplete="current-password" minlength="6" required />
-          </label>
-          <button class="button primary full" type="submit" data-auth-submit>Log in</button>
-        </form>
-        <button class="text-action" type="button" data-sign-out hidden>Sign out</button>
-      </div>
-    </section>
-
-    <section class="modal-layer" data-dashboard-modal hidden>
-      <div class="modal-panel wide" role="dialog" aria-modal="true" aria-labelledby="dashboard-title">
-        <button class="modal-close" type="button" data-close-dashboard aria-label="Close">×</button>
-        <p class="eyebrow">SurMe Web App</p>
-        <h2 id="dashboard-title">Set up your assistant</h2>
-        <p class="modal-subtitle">Complete onboarding, connect Google Calendar, then generate your 15-minute Telegram key.</p>
-        <form class="dashboard-grid" data-onboarding-form>
-          <label>
-            Name
-            <input name="display_name" type="text" placeholder="Your name" required />
-          </label>
-          <label>
-            User type
-            <select name="primary_role" required>
-              <option value="">Choose one</option>
-              <option>Student</option>
-              <option>Founder</option>
-              <option>CEO</option>
-              <option>Professional worker</option>
-            </select>
-          </label>
-          <label>
-            Timezone
-            <input name="timezone" type="text" value="Asia/Phnom_Penh" required />
-          </label>
-          <label class="wide-field">
-            Goals
-            <textarea name="goals" rows="3" placeholder="What do you want SurMe to help with?"></textarea>
-          </label>
-          <label class="wide-field">
-            Personality notes
-            <textarea name="personality_notes" rows="3" placeholder="What SurMe should remember about how you work and communicate"></textarea>
-          </label>
-          <button class="button primary full wide-field" type="submit">Save onboarding</button>
-        </form>
-        <div class="connect-row">
-          <button class="button secondary" type="button" data-connect-google>Connect Google Calendar</button>
-          <button class="button primary" type="button" data-create-telegram-link>Create Telegram key</button>
-        </div>
-        <div class="telegram-key" data-telegram-result hidden>
-          <strong>Telegram key expires in 15 minutes</strong>
-          <code data-telegram-token></code>
-          <a class="button primary full" data-telegram-url target="_blank" rel="noreferrer">Open linked Telegram bot</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="modal-layer" data-admin-modal hidden>
-      <div class="modal-panel wide" role="dialog" aria-modal="true" aria-labelledby="admin-title">
-        <button class="modal-close" type="button" data-close-admin aria-label="Close">×</button>
-        <p class="eyebrow">Admin persona</p>
-        <h2 id="admin-title">Edit SurMe's AI behavior</h2>
-        <p class="modal-subtitle">Only `nilaademo@gmail.com` can save this. Write what you want SurMe to become, then structure it into a production system prompt.</p>
-        <label class="admin-field">
-          Admin instruction
-          <textarea data-persona-draft rows="5" placeholder="Example: Make SurMe act like a proactive executive assistant. Keep answers short, friendly, and always confirm before sending emails or booking travel."></textarea>
-        </label>
-        <div class="admin-actions">
-          <button class="button secondary" type="button" data-structure-persona>Structure with AI</button>
-          <button class="button primary" type="button" data-save-persona>Save persona</button>
-        </div>
-        <label class="admin-field">
-          Current system prompt
-          <textarea data-persona-output rows="9"></textarea>
-        </label>
-      </div>
-    </section>
+    <div class="toast glass standard" data-toast role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="script.js?v=5"></script>
+    <script src="script.js?v=7"></script>
   </body>
 </html>
-

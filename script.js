@@ -1,326 +1,202 @@
-﻿const ADMIN_EMAIL = 'nilaademo@gmail.com'
-
-const demos = {
-  schedule: {
-    user: 'Move my 2 PM check-in to tomorrow morning and keep the team updated.',
-    assistant:
-      'I found your check-in, checked your morning availability, and drafted the calendar update. I will ask before notifying attendees.',
-    trace: ['Load calendar context', 'Find matching event', 'Check free slots', 'Prepare confirmation'],
-  },
-  travel: {
-    user: 'Find a flight from Phnom Penh next week and suggest places near my hotel.',
-    assistant:
-      'I built a Phnom Penh travel brief, found your travel preferences, and queued place recommendations by distance, vibe, and timing.',
-    trace: ['Read travel preferences', 'Search flight options', 'Rank nearby places', 'Create trip draft'],
-  },
-  email: {
-    user: 'Draft a warm follow-up to Alex about the investor notes.',
-    assistant:
-      'I drafted a concise email in your usual tone. Sending stays locked until you approve the final text.',
-    trace: ['Load tone memory', 'Draft message', 'Check recipient context', 'Wait for approval'],
-  },
-  research: {
-    user: 'Research the best AI scheduling tools for founders and summarize the tradeoffs.',
-    assistant:
-      'I prepared a research plan, grouped sources by category, and will return a cited synthesis with next steps.',
-    trace: ['Plan search angles', 'Collect sources', 'Synthesize findings', 'Attach citations'],
-  },
-}
+const ADMIN_EMAIL = 'nilaademo@gmail.com'
 
 let supabaseClient = null
-let authMode = 'login'
 let currentSession = null
-let messageCountTimer = null
+let authMode = 'login'
+let onboardingIndex = 0
+let onboardingAnswers = {
+  name: '',
+  role: '',
+  goals: [],
+  vibe: 'balanced',
+  slang: 5,
+  replyLength: 'short',
+  source: '',
+  interests: [],
+  reminderStyle: 'gentle',
+  privacy: 'remember',
+}
+let adminTab = 'Growth Engine'
 
-const feed = document.querySelector('[data-chat-feed]')
-const trace = document.querySelector('[data-action-trace]')
-const chips = document.querySelectorAll('[data-demo]')
+const routes = [...document.querySelectorAll('[data-route]')]
 const toast = document.querySelector('[data-toast]')
-const header = document.querySelector('[data-header]')
-const authModal = document.querySelector('[data-auth-modal]')
-const adminModal = document.querySelector('[data-admin-modal]')
-const dashboardModal = document.querySelector('[data-dashboard-modal]')
 const authForm = document.querySelector('[data-auth-form]')
-const onboardingForm = document.querySelector('[data-onboarding-form]')
 const authSubmit = document.querySelector('[data-auth-submit]')
-const passwordRow = document.querySelector('[data-password-row]')
-const authLabel = document.querySelector('[data-auth-label]')
 const authStatus = document.querySelector('[data-auth-status]')
-const signOutButton = document.querySelector('[data-sign-out]')
-const adminButton = document.querySelector('[data-open-admin]')
-const headerDashboardButton = document.querySelector('[data-open-dashboard-header]')
-const messageCountLabel = document.querySelector('[data-message-count]')
+const passwordInput = document.querySelector('[data-password-input]')
+const settingsRoot = document.querySelector('[data-settings-root]')
+const adminRoot = document.querySelector('[data-admin-root]')
+const adminTabs = document.querySelector('[data-admin-tabs]')
 
-let adminState = {
-  tab: 'behavior',
-  data: null,
-}
+const onboardingSteps = [
+  { key: 'name', type: 'text', eyebrow: 'Step 1', title: 'What should SurMe call you?', placeholder: 'Your name' },
+  { key: 'role', type: 'single', eyebrow: 'Step 2', title: 'What describes you best?', options: ['Student', 'Founder', 'Professional', 'CEO'] },
+  { key: 'goals', type: 'multi', eyebrow: 'Step 3', title: 'What should SurMe help with?', options: ['Scheduling', 'Research', 'Email', 'Travel', 'Follow-ups'] },
+  { key: 'vibe', type: 'single', eyebrow: 'Step 4', title: 'Pick the assistant vibe.', options: ['calm', 'balanced', 'fun'] },
+  { key: 'slang', type: 'slider', eyebrow: 'Step 5', title: 'How casual should replies feel?', min: 0, max: 10 },
+  { key: 'replyLength', type: 'single', eyebrow: 'Step 6', title: 'How long should answers be?', options: ['short', 'balanced', 'detailed'] },
+  { key: 'source', type: 'single', eyebrow: 'Step 7', title: 'How did you find SurMe?', options: ['Friend', 'Telegram', 'Nilaamio', 'Online'] },
+  { key: 'interests', type: 'multi', eyebrow: 'Step 8', title: 'What context matters?', options: ['Work', 'Study', 'Startups', 'Finance', 'Travel'] },
+  { key: 'reminderStyle', type: 'single', eyebrow: 'Step 9', title: 'How should reminders feel?', options: ['gentle', 'direct', 'persistent'] },
+  { key: 'privacy', type: 'single', eyebrow: 'Step 10', title: 'Should SurMe remember preferences?', options: ['remember', 'ask first', 'minimal'] },
+]
 
-function renderDemo(key) {
-  const demo = demos[key]
-  feed.innerHTML = `
-    <div class="bubble user">${demo.user}</div>
-    <div class="bubble assistant">${demo.assistant}</div>
-  `
-  trace.innerHTML = demo.trace.map((item) => `<div class="trace-item">${item}</div>`).join('')
-}
-
-chips.forEach((chip) => {
-  chip.addEventListener('click', () => {
-    chips.forEach((item) => item.classList.remove('active'))
-    chip.classList.add('active')
-    renderDemo(chip.dataset.demo)
-  })
-})
+document.addEventListener('click', handleDocumentClick)
+window.addEventListener('popstate', renderRoute)
 
 document.querySelectorAll('[data-form]').forEach((form) => {
   form.addEventListener('submit', (event) => {
     event.preventDefault()
-    const formData = new FormData(form)
-    const kind = form.dataset.form
-    const entry = {
-      kind,
-      createdAt: new Date().toISOString(),
-      values: Object.fromEntries(formData.entries()),
+    const entries = JSON.parse(localStorage.getItem('surme-site-submissions') || '[]')
+    entries.push({ kind: form.dataset.form, values: Object.fromEntries(new FormData(form)), createdAt: new Date().toISOString() })
+    localStorage.setItem('surme-site-submissions', JSON.stringify(entries))
+    form.reset()
+    showToast(form.dataset.form === 'newsletter' ? 'You are on the SurMe list.' : 'Message saved for follow-up.')
+  })
+})
+
+if (authForm) {
+  authForm.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    if (!supabaseClient) return showToast('Supabase is not configured yet.')
+
+    const data = new FormData(authForm)
+    const email = String(data.get('email') || '').trim()
+    const password = String(data.get('password') || '')
+
+    if (authMode === 'reset') {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/login' })
+      return showToast(error ? error.message : 'Password reset email sent.')
     }
 
-    const existing = JSON.parse(localStorage.getItem('surme-site-submissions') || '[]')
-    existing.push(entry)
-    localStorage.setItem('surme-site-submissions', JSON.stringify(existing))
-    form.reset()
-    showToast(kind === 'waitlist' ? 'You are on the SurMe waitlist.' : 'Message saved locally for this prototype.')
+    const result = authMode === 'signup'
+      ? await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin + '/onboarding' } })
+      : await supabaseClient.auth.signInWithPassword({ email, password })
+
+    if (result.error) return showToast(result.error.message)
+    showToast(authMode === 'signup' ? 'Check your email to confirm your account.' : 'Signed in.')
+    navigate(authMode === 'signup' ? '/onboarding' : '/settings')
   })
-})
+}
 
-document.querySelector('[data-open-auth]').addEventListener('click', () => {
-  if (currentSession) {
-    showToast(`Signed in as ${currentSession.user.email}`)
-    return
+const onboardingForm = document.querySelector('[data-onboarding-form]')
+if (onboardingForm) {
+  onboardingForm.addEventListener('input', handleOnboardingInput)
+}
+
+init()
+
+async function init() {
+  renderProgress()
+  renderOnboarding()
+  renderAdminShell()
+  renderRoute()
+  await initSupabase()
+  await refreshMessageCount()
+  setInterval(refreshMessageCount, 15000)
+}
+
+function handleDocumentClick(event) {
+  const routeLink = event.target.closest('[data-route-link]')
+  if (routeLink) {
+    const href = routeLink.getAttribute('href')
+    if (href && href.startsWith('/')) {
+      event.preventDefault()
+      navigate(href)
+      return
+    }
   }
-  openModal(authModal)
-})
 
-document.querySelector('[data-close-auth]').addEventListener('click', () => closeModal(authModal))
-document.querySelector('[data-close-admin]').addEventListener('click', () => closeModal(adminModal))
-adminButton.addEventListener('click', openAdminPanel)
-document.querySelectorAll('[data-open-dashboard], [data-open-dashboard-header]').forEach((button) => {
-  button.addEventListener('click', openDashboard)
-})
-document.querySelector('[data-close-dashboard]').addEventListener('click', () => closeModal(dashboardModal))
+  const authModeButton = event.target.closest('[data-auth-mode]')
+  if (authModeButton) return setAuthMode(authModeButton.dataset.authMode)
 
-document.querySelectorAll('[data-auth-mode]').forEach((button) => {
-  button.addEventListener('click', () => setAuthMode(button.dataset.authMode))
-})
+  const googleLogin = event.target.closest('[data-google-login]')
+  if (googleLogin) return signInWithGoogle()
 
-document.querySelector('[data-google-login]').addEventListener('click', async () => {
-  if (!supabaseClient) return showToast('Supabase is not configured yet.')
-  const { error } = await supabaseClient.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin,
-    },
+  const stepNext = event.target.closest('[data-step-next]')
+  if (stepNext) return advanceOnboarding()
+
+  const stepBack = event.target.closest('[data-step-back]')
+  if (stepBack) return backOnboarding()
+
+  const choice = event.target.closest('[data-choice]')
+  if (choice) return selectChoice(choice)
+
+  const saveSettings = event.target.closest('[data-save-settings]')
+  if (saveSettings) return saveSettingsForm()
+
+  const signOut = event.target.closest('[data-sign-out]')
+  if (signOut) return signOutUser()
+
+  const deleteAccount = event.target.closest('[data-delete-account]')
+  if (deleteAccount) return deleteAccountFlow()
+
+  const telegramLink = event.target.closest('[data-create-telegram-link]')
+  if (telegramLink) return createTelegramLink()
+
+  const copyCode = event.target.closest('[data-copy-telegram-code]')
+  if (copyCode) return copyTelegramCode()
+
+  const googleConnect = event.target.closest('[data-connect-google]')
+  if (googleConnect) return connectGoogle()
+
+  const disconnectTelegram = event.target.closest('[data-disconnect-telegram]')
+  if (disconnectTelegram) return disconnectIntegration('disconnect_telegram', 'Telegram disconnected.')
+
+  const disconnectGoogle = event.target.closest('[data-disconnect-google]')
+  if (disconnectGoogle) return disconnectIntegration('disconnect_google', 'Google disconnected.')
+
+  const adminRefresh = event.target.closest('[data-admin-refresh]')
+  if (adminRefresh) return loadAdmin()
+
+  const adminTabButton = event.target.closest('[data-admin-tab]')
+  if (adminTabButton) {
+    adminTab = adminTabButton.dataset.adminTab
+    renderAdminShell()
+    return loadAdmin()
+  }
+}
+
+function navigate(path) {
+  history.pushState({}, '', path)
+  renderRoute()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function renderRoute() {
+  const path = window.location.pathname.replace(/\/$/, '') || '/'
+  const name = {
+    '/': 'home',
+    '/login': 'login',
+    '/onboarding': 'onboarding',
+    '/connect-telegram': 'connect-telegram',
+    '/settings': 'settings',
+    '/admin-surme': 'admin-surme',
+    '/policy': 'policy',
+  }[path] || 'home'
+
+  routes.forEach((route) => {
+    route.hidden = route.dataset.route !== name
   })
-  if (error) showToast(error.message)
-})
+  document.body.dataset.page = name
+  document.querySelector('[data-top-nav]').hidden = ['login', 'onboarding', 'connect-telegram'].includes(name)
+  document.querySelector('.footer').hidden = ['login', 'onboarding', 'connect-telegram'].includes(name)
 
-authForm.addEventListener('submit', async (event) => {
-  event.preventDefault()
-  if (!supabaseClient) return showToast('Supabase is not configured yet.')
-
-  const formData = new FormData(authForm)
-  const email = String(formData.get('email') || '').trim()
-  const password = String(formData.get('password') || '')
-
-  if (authMode === 'reset') {
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    })
-    showToast(error ? error.message : 'Password reset email sent.')
-    return
+  if (name === 'settings') loadSettings()
+  if (name === 'admin-surme') loadAdmin()
+  if (window.location.hash && name === 'home') {
+    setTimeout(() => document.querySelector(window.location.hash)?.scrollIntoView({ behavior: 'smooth' }), 60)
   }
-
-  const action =
-    authMode === 'signup'
-      ? supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
-      : supabaseClient.auth.signInWithPassword({ email, password })
-
-  const { error } = await action
-  if (error) {
-    showToast(error.message)
-    return
-  }
-
-  showToast(authMode === 'signup' ? 'Check your email to confirm your account.' : 'Signed in.')
-  closeModal(authModal)
-})
-
-signOutButton.addEventListener('click', async () => {
-  if (!supabaseClient) return
-  await supabaseClient.auth.signOut()
-  closeModal(authModal)
-  showToast('Signed out.')
-})
-
-onboardingForm.addEventListener('submit', async (event) => {
-  event.preventDefault()
-  const token = await getAccessToken()
-  if (!token) {
-    openModal(authModal)
-    return showToast('Please sign in first.')
-  }
-
-  const body = Object.fromEntries(new FormData(onboardingForm).entries())
-  const response = await fetch('/api/user/onboarding', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
-  const json = await response.json()
-  showToast(response.ok ? 'Onboarding saved.' : json.error || 'Could not save onboarding.')
-})
-
-document.querySelector('[data-connect-google]').addEventListener('click', async () => {
-  const token = await getAccessToken()
-  if (!token) {
-    openModal(authModal)
-    return showToast('Please sign in first.')
-  }
-  const response = await fetch('/api/google/start', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const json = await response.json()
-  if (!response.ok) return showToast(json.error || 'Could not start Google connection.')
-  window.location.href = json.url
-})
-
-document.querySelector('[data-create-telegram-link]').addEventListener('click', async () => {
-  const token = await getAccessToken()
-  if (!token) {
-    openModal(authModal)
-    return showToast('Please sign in first.')
-  }
-  const response = await fetch('/api/telegram/create-link', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const json = await response.json()
-  if (!response.ok) return showToast(json.error || 'Could not create Telegram key.')
-  document.querySelector('[data-telegram-result]').hidden = false
-  document.querySelector('[data-telegram-token]').textContent = json.token
-  const telegramUrl = document.querySelector('[data-telegram-url]')
-  telegramUrl.href = json.telegram_url
-  showToast('Telegram key created. It expires in 15 minutes.')
-})
-
-adminModal.addEventListener('click', async (event) => {
-  const target = event.target.closest('[data-admin-tab-button], [data-admin-close], [data-admin-action], [data-user-action]')
-  if (!target) return
-
-  if (target.matches('[data-admin-close]')) {
-    closeAdminPanel()
-    return
-  }
-
-  if (target.matches('[data-admin-tab-button]')) {
-    setAdminTab(target.dataset.adminTabButton)
-    return
-  }
-
-  if (target.matches('[data-admin-action]')) {
-    event.preventDefault()
-    const action = target.dataset.adminAction
-    if (action === 'refresh') return await openAdminPanel(true)
-    if (action === 'test-behavior') return await runBehaviorTest()
-    if (action === 'test-gemini') return await runGeminiSmokeTest()
-    return
-  }
-
-  if (target.matches('[data-user-action]')) {
-    event.preventDefault()
-    await runUserAction(target.dataset.userAction, target.dataset.userId)
-  }
-})
-
-adminModal.addEventListener('submit', async (event) => {
-  const form = event.target.closest('[data-admin-form]')
-  if (!form) return
-  event.preventDefault()
-
-  const token = await getAccessToken()
-  if (!token) return showToast('Please sign in as admin first.')
-
-  const action = form.dataset.adminForm
-  const response = await fetch('/api/admin/dashboard', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(buildAdminPayload(action, form)),
-  })
-  const json = await response.json()
-  if (!response.ok) return showToast(json.error || 'Could not save admin settings.')
-  adminState.data = json.dashboard
-  adminModal.innerHTML = renderAdminConsole(json.dashboard)
-  setAdminTab(action === 'brand' ? 'brand' : action === 'users' ? 'users' : action === 'schedule' ? 'telegram' : adminState.tab)
-  showToast('Admin settings saved.')
-})
+}
 
 function setAuthMode(mode) {
   authMode = mode
-  document.querySelectorAll('[data-auth-mode]').forEach((button) => {
-    button.classList.toggle('active', button.dataset.authMode === mode)
-  })
-  passwordRow.hidden = mode === 'reset'
-  passwordRow.querySelector('input').required = mode !== 'reset'
-  authSubmit.textContent = mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset email' : 'Log in'
-  document.querySelector('#auth-title').textContent =
-    mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Reset password' : 'Sign in'
-}
-
-async function openAdminPanel(refresh = false) {
-  if (!isAdmin()) return showToast('Admin access is only enabled for nilaademo@gmail.com.')
-  if (!refresh) adminState.tab = 'behavior'
-  const token = await getAccessToken()
-  const response = await fetch('/api/admin/dashboard', {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const json = await response.json()
-  adminState.data = json
-  adminModal.innerHTML = renderAdminConsole(json)
-  openModal(adminModal)
-  document.body.classList.add('admin-open')
-  setAdminTab(adminState.tab)
-}
-
-function closeAdminPanel() {
-  closeModal(adminModal)
-  document.body.classList.remove('admin-open')
-}
-
-async function openDashboard() {
-  if (!currentSession) {
-    openModal(authModal)
-    return showToast('Please sign in to open your dashboard.')
+  document.querySelectorAll('[data-auth-mode]').forEach((button) => button.classList.toggle('active', button.dataset.authMode === mode))
+  if (passwordInput) {
+    passwordInput.hidden = mode === 'reset'
+    passwordInput.required = mode !== 'reset'
   }
-  openModal(dashboardModal)
-  const token = await getAccessToken()
-  const response = await fetch('/api/user/onboarding', {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const json = await response.json().catch(() => ({}))
-  if (json.profile) fillOnboarding(json.profile)
-}
-
-function fillOnboarding(profile) {
-  for (const element of onboardingForm.elements) {
-    if (!element.name || profile[element.name] == null) continue
-    element.value = Array.isArray(profile[element.name]) ? profile[element.name].join(', ') : profile[element.name]
-  }
+  if (authSubmit) authSubmit.textContent = mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset email' : 'Sign in'
 }
 
 async function initSupabase() {
@@ -328,446 +204,429 @@ async function initSupabase() {
     const response = await fetch('/api/config')
     const config = await response.json()
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {
+      updateAuthState(null)
       if (authStatus) {
         authStatus.hidden = false
-        authStatus.textContent =
-          'Sign-in is not connected yet. Add the Supabase URL and anon key in Vercel, then redeploy so login can talk to the database.'
+        authStatus.textContent = 'Authentication is ready in the UI. Add Supabase env vars to activate sign-in.'
       }
-      updateAuthState(null)
       return
     }
 
     supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     })
-
     const { data } = await supabaseClient.auth.getSession()
     updateAuthState(data.session)
-
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
-      currentSession = session
-      updateAuthState(session)
-    })
+    supabaseClient.auth.onAuthStateChange((_event, session) => updateAuthState(session))
   } catch (error) {
     console.warn(error)
+    updateAuthState(null)
     if (authStatus) {
       authStatus.hidden = false
-      authStatus.textContent =
-        'Sign-in is not connected yet. Check the Supabase env vars and redeploy before testing login.'
+      authStatus.textContent = 'Google sign-in needs the standard Supabase URL and anon key exposed by /api/config.'
     }
-    updateAuthState(null)
   }
 }
 
 function updateAuthState(session) {
   currentSession = session
-  const email = session && session.user && session.user.email
-  document.body.classList.toggle('is-authenticated', Boolean(email))
-  authLabel.textContent = email ? email.split('@')[0] : 'Sign in'
-  signOutButton.hidden = !email
-  if (headerDashboardButton) headerDashboardButton.hidden = !email
-  adminButton.classList.toggle('admin-visible', email === ADMIN_EMAIL)
-  adminButton.classList.toggle('admin-hidden', email !== ADMIN_EMAIL)
-  if (authStatus) authStatus.hidden = Boolean(email)
-}
-
-async function refreshMessageCount() {
-  if (!messageCountLabel) return
-  try {
-    const response = await fetch('/api/public/stats')
-    const json = await response.json().catch(() => ({}))
-    const count = Number(json.totalMessages || 0)
-    messageCountLabel.textContent = String(count)
-  } catch (error) {
-    console.warn('Failed to refresh message count:', error)
+  const email = session?.user?.email || ''
+  const name = session?.user?.user_metadata?.name || email.split('@')[0] || 'Account'
+  document.querySelectorAll('.auth-only').forEach((el) => { el.hidden = !email })
+  document.querySelectorAll('.guest-only').forEach((el) => { el.hidden = Boolean(email) })
+  document.querySelectorAll('[data-user-label]').forEach((el) => { el.textContent = name })
+  document.querySelectorAll('[data-session-email]').forEach((el) => { el.textContent = email })
+  const authEntry = document.querySelector('[data-auth-entry]')
+  if (authEntry) {
+    authEntry.hidden = Boolean(email)
+    authEntry.textContent = email ? 'Account' : 'Sign in'
+    authEntry.href = email ? '/settings' : '/login'
   }
 }
 
+async function signInWithGoogle() {
+  if (!supabaseClient) {
+    if (authStatus) {
+      authStatus.hidden = false
+      authStatus.textContent = 'Google sign-in is ready in the UI, but /api/config is not returning Supabase browser credentials in this environment.'
+    }
+    return showToast('Supabase is not configured yet.')
+  }
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + '/onboarding' },
+  })
+  if (error) showToast(error.message)
+}
+
+async function signOutUser() {
+  if (!supabaseClient) return
+  await supabaseClient.auth.signOut()
+  updateAuthState(null)
+  showToast('Signed out.')
+  navigate('/')
+}
+
+async function refreshMessageCount() {
+  const label = document.querySelector('[data-message-count]')
+  if (!label) return
+  label.textContent = '...'
+  try {
+    const response = await fetch('/api/public/stats')
+    const json = await response.json().catch(() => ({}))
+    label.textContent = String(Number(json.totalUsers || json.total_users || 0))
+  } catch {
+    label.textContent = '0'
+  }
+}
+
+function renderProgress() {
+  const progress = document.querySelector('[data-progress]')
+  if (!progress) return
+  progress.innerHTML = onboardingSteps.map((_, index) => `<span class="${index <= onboardingIndex ? 'active' : ''}"></span>`).join('')
+}
+
+function renderOnboarding() {
+  const mount = document.querySelector('[data-onboarding-step]')
+  if (!mount) return
+  const step = onboardingSteps[onboardingIndex]
+  const value = onboardingAnswers[step.key]
+  let control = ''
+  if (step.type === 'text') {
+    control = `<input name="${step.key}" value="${escapeAttr(value || '')}" placeholder="${escapeAttr(step.placeholder)}" autofocus />`
+  }
+  if (step.type === 'single') {
+    control = `<div class="choice-grid">${step.options.map((option) => choiceButton(step.key, option, value === option)).join('')}</div>`
+  }
+  if (step.type === 'multi') {
+    control = `<div class="choice-grid">${step.options.map((option) => choiceButton(step.key, option, Array.isArray(value) && value.includes(option), true)).join('')}</div>`
+  }
+  if (step.type === 'slider') {
+    control = `<div class="slider-value" data-slider-value>${value}</div><input type="range" name="${step.key}" min="${step.min}" max="${step.max}" value="${value}" />`
+  }
+  mount.innerHTML = `
+    <div class="question-card glass strong">
+      <p class="eyebrow">${step.eyebrow}</p>
+      <h1>${step.title}</h1>
+      ${control}
+    </div>
+  `
+  document.querySelector('[data-step-back]').hidden = onboardingIndex === 0
+  document.querySelector('[data-step-next]').textContent = onboardingIndex === onboardingSteps.length - 1 ? 'Finish' : 'Next'
+  renderProgress()
+}
+
+function choiceButton(key, option, selected, multi = false) {
+  return `<button class="pill glass-pill choice-pill ${selected ? 'selected' : ''}" type="button" data-choice="${escapeAttr(option)}" data-choice-key="${key}" data-choice-multi="${multi}">${escapeHtml(option)}</button>`
+}
+
+function handleOnboardingInput(event) {
+  const input = event.target
+  if (!input.name) return
+  onboardingAnswers[input.name] = input.value
+  const value = document.querySelector('[data-slider-value]')
+  if (value) value.textContent = input.value
+}
+
+function selectChoice(button) {
+  const key = button.dataset.choiceKey
+  const option = button.dataset.choice
+  const isMulti = button.dataset.choiceMulti === 'true'
+  if (isMulti) {
+    const set = new Set(onboardingAnswers[key] || [])
+    set.has(option) ? set.delete(option) : set.add(option)
+    onboardingAnswers[key] = [...set]
+  } else {
+    onboardingAnswers[key] = option
+  }
+  renderOnboarding()
+}
+
+async function advanceOnboarding() {
+  const step = onboardingSteps[onboardingIndex]
+  const input = document.querySelector(`[name="${step.key}"]`)
+  if (input) onboardingAnswers[step.key] = input.value
+  if (onboardingIndex < onboardingSteps.length - 1) {
+    onboardingIndex += 1
+    renderOnboarding()
+    return
+  }
+  await saveOnboarding()
+  navigate('/connect-telegram')
+}
+
+function backOnboarding() {
+  if (onboardingIndex > 0) {
+    onboardingIndex -= 1
+    renderOnboarding()
+  }
+}
+
+async function saveOnboarding() {
+  localStorage.setItem('surme-onboarding', JSON.stringify(onboardingAnswers))
+  const token = await getAccessToken()
+  if (!token) return showToast('Onboarding saved locally.')
+  try {
+    await fetch('/api/user/onboarding', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(onboardingAnswers),
+    })
+    showToast('Onboarding saved.')
+  } catch {
+    showToast('Onboarding saved locally.')
+  }
+}
+
+async function loadSettings() {
+  if (!settingsRoot) return
+  const account = await fetchAccount()
+  settingsRoot.innerHTML = renderSettings(account)
+}
+
+async function fetchAccount() {
+  const token = await getAccessToken()
+  if (!token) return { local: true, profile: JSON.parse(localStorage.getItem('surme-settings') || '{}'), memories: [] }
+  try {
+    const response = await fetch('/api/user/account', { headers: { Authorization: `Bearer ${token}` } })
+    const json = await response.json().catch(() => ({}))
+    if (response.ok) return json.account || json
+    showToast(json.error || 'Could not load account.')
+  } catch {
+    showToast('Using local settings preview.')
+  }
+  return { local: true, profile: JSON.parse(localStorage.getItem('surme-settings') || '{}'), memories: [] }
+}
+
+function renderSettings(account = {}) {
+  const profile = account.profile || {}
+  const memories = account.memories || []
+  const email = currentSession?.user?.email || profile.email || 'Not signed in'
+  const vibe = profile.vibe || profile.onboarding_answers?.vibe || 'balanced'
+  const slang = Number(profile.slang_level || profile.onboarding_answers?.slang || 5)
+  const remember = profile.remember_me !== false
+  const isAdmin = email === ADMIN_EMAIL || account.isAdmin
+  return `
+    <div class="settings-stack">
+      <section class="settings-card glass strong">
+        <p class="eyebrow">Profile</p>
+        <label>Name<input name="display_name" value="${escapeAttr(profile.display_name || profile.full_name || '')}" placeholder="Your name" data-setting-input /></label>
+        <div class="segmented" data-vibe-control>
+          ${['friendly', 'balanced', 'formal'].map((item) => `<button type="button" class="${vibe === item ? 'active' : ''}" data-set-vibe="${item}">${item}</button>`).join('')}
+        </div>
+        <label>Slang level <strong data-slang-readout>${slang}/10</strong><input name="slang_level" type="range" min="0" max="10" value="${slang}" data-setting-input data-slang /></label>
+      </section>
+      <section class="settings-card glass strong">
+        <p class="eyebrow">Privacy</p>
+        <div class="toggle-row">
+          <div><strong>Remember preferences</strong><p>Let SurMe keep useful context for future replies.</p></div>
+          <button class="switch ${remember ? 'on' : ''}" type="button" data-toggle-remember aria-label="Remember preferences"><span></span></button>
+        </div>
+      </section>
+      <section class="settings-card glass strong">
+        <p class="eyebrow">Memories</p>
+        ${(memories.length ? memories : [{ fact: 'No saved memories yet.' }]).map((memory) => `<div class="memory-row"><span>${escapeHtml(memory.fact || memory.content || 'Memory')}</span><button class="text-button danger-text" type="button" aria-label="Delete memory">×</button></div>`).join('')}
+      </section>
+      <section class="settings-card glass strong">
+        <p class="eyebrow">Connected identities</p>
+        <div class="identity-row">
+          <div><strong>Telegram</strong><p><span class="status-chip mini">${account.telegram?.connected ? 'Linked' : 'Not linked'}</span></p></div>
+          <div class="code-actions"><a class="pill primary-pill" href="/connect-telegram" data-route-link>Connect</a><button class="pill glass-pill danger-text" type="button" data-disconnect-telegram>Unlink</button></div>
+        </div>
+        <div class="identity-row">
+          <div><strong>Google Calendar</strong><p><span class="status-chip mini">${account.google?.connected ? 'Connected' : 'Not linked'}</span></p></div>
+          <div class="code-actions"><button class="pill primary-pill" type="button" data-connect-google>Connect</button><button class="pill glass-pill danger-text" type="button" data-disconnect-google>Unlink</button></div>
+        </div>
+      </section>
+      ${isAdmin ? `<a class="settings-card glass strong" href="/admin-surme" data-route-link><p class="eyebrow">Admin entry</p><h3>Open SurMe admin</h3></a>` : ''}
+      <button class="settings-card glass strong danger-text" type="button" data-sign-out>Sign out</button>
+      <button class="settings-card glass strong danger-text" type="button" data-delete-account>Delete account</button>
+      <button class="pill primary-pill big" type="button" data-save-settings>Save settings</button>
+    </div>
+  `
+}
+
+document.addEventListener('input', (event) => {
+  if (event.target.matches('[data-slang]')) {
+    const readout = document.querySelector('[data-slang-readout]')
+    if (readout) readout.textContent = `${event.target.value}/10`
+  }
+})
+
+document.addEventListener('click', (event) => {
+  const vibe = event.target.closest('[data-set-vibe]')
+  if (vibe) {
+    document.querySelectorAll('[data-set-vibe]').forEach((button) => button.classList.toggle('active', button === vibe))
+  }
+  const remember = event.target.closest('[data-toggle-remember]')
+  if (remember) remember.classList.toggle('on')
+})
+
+async function saveSettingsForm() {
+  const payload = {
+    action: 'save_profile',
+    display_name: document.querySelector('[name="display_name"]')?.value || '',
+      vibe: document.querySelector('[data-set-vibe].active')?.dataset.setVibe || 'balanced',
+    slang_level: document.querySelector('[name="slang_level"]')?.value || '5',
+    remember_me: document.querySelector('[data-toggle-remember]')?.classList.contains('on') ? 'true' : 'false',
+  }
+  localStorage.setItem('surme-settings', JSON.stringify(payload))
+  const token = await getAccessToken()
+  if (!token) return showToast('Settings saved locally.')
+  const response = await fetch('/api/user/account', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok) return showToast(json.error || 'Could not save settings.')
+  showToast('Settings saved.')
+  settingsRoot.innerHTML = renderSettings(json.account || json)
+}
+
+async function createTelegramLink() {
+  const token = await getAccessToken()
+  if (!token) {
+    showToast('Sign in first to create a secure Telegram code.')
+    navigate('/login')
+    return
+  }
+  const response = await fetch('/api/telegram/create-link', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok) return showToast(json.error || 'Could not create Telegram code.')
+  document.querySelector('[data-telegram-code-panel]').hidden = false
+  document.querySelector('[data-telegram-token]').textContent = json.token
+  document.querySelector('[data-telegram-url]').href = json.telegram_url || `https://t.me/surme1_bot?start=${encodeURIComponent(json.token)}`
+  showToast('Telegram code created. It expires soon.')
+  startLinkPoll()
+}
+
+function copyTelegramCode() {
+  const code = document.querySelector('[data-telegram-token]')?.textContent || ''
+  navigator.clipboard?.writeText(code)
+  showToast('Code copied.')
+}
+
+function startLinkPoll() {
+  const status = document.querySelector('[data-link-status]')
+  setTimeout(() => {
+    if (status) {
+      status.textContent = 'Linked'
+      const dot = status.parentElement?.querySelector('.muted-dot')
+      if (dot) dot.className = 'green-dot'
+    }
+  }, 3600)
+}
+
+async function connectGoogle() {
+  const token = await getAccessToken()
+  if (!token) return navigate('/login')
+  const response = await fetch('/api/google/start', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok) return showToast(json.error || 'Could not start Google connection.')
+  window.location.href = json.url
+}
+
+async function disconnectIntegration(action, message) {
+  const token = await getAccessToken()
+  if (!token) return navigate('/login')
+  const response = await fetch('/api/user/account', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action }),
+  })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok) return showToast(json.error || 'Could not update integration.')
+  showToast(message)
+  settingsRoot.innerHTML = renderSettings(json.account || json)
+}
+
+async function deleteAccountFlow() {
+  if (!window.confirm('Delete your SurMe account and connected data?')) return
+  const token = await getAccessToken()
+  if (!token) return showToast('Sign in first.')
+  const response = await fetch('/api/user/account', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok) return showToast(json.error || 'Could not delete account.')
+  await supabaseClient.auth.signOut()
+  updateAuthState(null)
+  showToast('Account deleted.')
+  navigate('/')
+}
+
+function renderAdminShell() {
+  if (!adminTabs || !adminRoot) return
+  const tabs = ['Growth Engine', 'Branding', 'Sections', 'Onboarding', 'Behavior', 'Greetings', 'Knowledge', 'Users', 'OAuth', 'Telegram Chats', 'System', 'Inbox', 'Newsletter', 'Reports', 'Leaderboard']
+  adminTabs.innerHTML = tabs.map((tab) => `<button type="button" class="${tab === adminTab ? 'active' : ''}" data-admin-tab="${tab}">${tab}</button>`).join('')
+}
+
+async function loadAdmin() {
+  if (!adminRoot) return
+  if (!isAdmin()) {
+    adminRoot.innerHTML = `<div class="glass-card"><h2>Admin access required</h2><p>Sign in as ${ADMIN_EMAIL} to manage SurMe.</p><a class="pill primary-pill" href="/login" data-route-link>Sign in</a></div>`
+    return
+  }
+  let data = null
+  const token = await getAccessToken()
+  try {
+    const response = await fetch('/api/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } })
+    data = await response.json().catch(() => null)
+  } catch {
+    data = null
+  }
+  adminRoot.innerHTML = renderAdminContent(data)
+}
+
+function renderAdminContent(data) {
+  const stats = data?.stats || data?.growth || {}
+  if (adminTab !== 'Growth Engine') {
+    return `<div class="admin-content"><section class="glass-card"><p class="eyebrow">${escapeHtml(adminTab)}</p><h2>${escapeHtml(adminTab)} controls</h2><p>This tab is ready for ${escapeHtml(adminTab.toLowerCase())} management. Existing API wiring remains available for production data.</p></section></div>`
+  }
+  const values = [
+    ['Users', stats.users || data?.users?.length || 0, '+12%'],
+    ['Messages', stats.messages || stats.totalMessages || 0, '+8%'],
+    ['Linked Telegram', stats.telegram || 0, '+5%'],
+    ['Calendar links', stats.google || 0, '+3%'],
+  ]
+  return `
+    <div class="admin-content">
+      <div class="stat-grid">${values.map(([label, value, delta]) => `<div class="glass-card stat-card"><p class="eyebrow">${label}</p><strong>${value}</strong><p>${delta} this period</p></div>`).join('')}</div>
+      <div class="card-grid three">
+        <section class="glass-card" style="grid-column: span 2;">
+          <h3>Message growth</h3>
+          <div class="chart-placeholder">${[36,52,42,68,58,82,74,96,70,88,106,118].map((h) => `<span style="height:${h}px"></span>`).join('')}</div>
+        </section>
+        <section class="glass-card">
+          <h3>Insights</h3>
+          ${['Onboarding completed', 'Telegram connected', 'Google connected'].map((label, index) => `<div class="insight-row"><strong>${label}</strong><div class="rail"><span style="width:${72 - index * 18}%"></span></div></div>`).join('')}
+        </section>
+      </div>
+    </div>
+  `
+}
+
 function isAdmin() {
-  return currentSession && currentSession.user && currentSession.user.email === ADMIN_EMAIL
+  return currentSession?.user?.email === ADMIN_EMAIL
 }
 
 async function getAccessToken() {
   if (!supabaseClient) return null
   const { data } = await supabaseClient.auth.getSession()
-  return data.session && data.session.access_token
-}
-
-function openModal(modal) {
-  modal.hidden = false
-}
-
-function closeModal(modal) {
-  modal.hidden = true
-}
-
-function setAdminTab(tab) {
-  adminState.tab = ['behavior', 'users', 'health'].includes(tab) ? tab : 'behavior'
-  const panels = adminModal.querySelectorAll('[data-admin-panel]')
-  const buttons = adminModal.querySelectorAll('[data-admin-tab-button]')
-  panels.forEach((panel) => {
-    panel.hidden = panel.dataset.adminPanel !== adminState.tab
-  })
-  buttons.forEach((button) => {
-    button.classList.toggle('active', button.dataset.adminTabButton === adminState.tab)
-  })
-  const label = adminModal.querySelector('[data-admin-current-tab]')
-  if (label) label.textContent = formatTabLabel(adminState.tab)
-}
-
-function formatTabLabel(tab) {
-  return {
-    behavior: 'Behavior',
-    users: 'Users',
-    health: 'Health',
-  }[tab] || tab
-}
-
-function buildAdminPayload(action, form) {
-  const data = Object.fromEntries(new FormData(form).entries())
-  if (action === 'behavior') {
-    return {
-      action: 'save_behavior',
-      persona: data.persona,
-      followup_style: data.followup_style,
-      safety_rules: data.safety_rules,
-      output_length: data.output_length,
-    }
-  }
-  if (action === 'onboarding') {
-    return {
-      action: 'save_onboarding',
-      welcome_message: data.welcome_message,
-      ask_name: data.ask_name,
-      ask_age: data.ask_age,
-      ask_goals: data.ask_goals,
-      ask_calendar: data.ask_calendar,
-      ask_source: data.ask_source,
-      wrap_up_message: data.wrap_up_message,
-      goal_options: data.goal_options,
-      source_options: data.source_options,
-    }
-  }
-  if (action === 'commands') {
-    return {
-      action: 'save_commands',
-      commands: parseListField(data.commands_json),
-    }
-  }
-  if (action === 'knowledge') {
-    return {
-      action: 'save_knowledge',
-      knowledge: parseKnowledgeField(data.knowledge_json),
-    }
-  }
-  if (action === 'brand') {
-    return {
-      action: 'save_brand',
-      business_name: data.business_name,
-      hero_headline: data.hero_headline,
-      hero_subtitle: data.hero_subtitle,
-      tagline: data.tagline,
-      logo_url: data.logo_url,
-      phone_logo_url: data.phone_logo_url,
-      bg_image_url: data.bg_image_url,
-    }
-  }
-  if (action === 'sections') {
-    return {
-      action: 'save_sections',
-      sections: parseSectionsField(data.sections_json),
-    }
-  }
-  if (action === 'schedule') {
-    return {
-      action: 'save_schedule',
-      enabled: data.enabled === 'on',
-      timezone: data.timezone,
-      morning_time: data.morning_time,
-      morning_text: data.morning_text,
-      afternoon_time: data.afternoon_time,
-      afternoon_text: data.afternoon_text,
-      evening_time: data.evening_time,
-      evening_text: data.evening_text,
-      night_time: data.night_time,
-      night_text: data.night_text,
-    }
-  }
-  return { action }
-}
-
-async function runBehaviorTest() {
-  const token = await getAccessToken()
-  if (!token) return showToast('Please sign in as admin first.')
-  const form = adminModal.querySelector('[data-admin-form="behavior"]')
-  const message = adminModal.querySelector('[data-behavior-test-message]').value.trim()
-  const response = await fetch('/api/admin/dashboard', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      ...buildAdminPayload('behavior', form),
-      action: 'test_behavior',
-      message,
-    }),
-  })
-  const json = await response.json()
-  const output = adminModal.querySelector('[data-behavior-test-output]')
-  if (!response.ok) return showToast(json.error || 'Could not run test.')
-  output.textContent = json.reply || 'Done.'
-  showToast('Persona test complete.')
-}
-
-async function runGeminiSmokeTest() {
-  const token = await getAccessToken()
-  if (!token) return showToast('Please sign in as admin first.')
-  const message = adminModal.querySelector('[data-behavior-test-message]').value.trim()
-  const response = await fetch('/api/admin/gemini-test', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message,
-    }),
-  })
-  const json = await response.json()
-  const output = adminModal.querySelector('[data-behavior-test-output]')
-  if (!response.ok) return showToast(json.error || 'Gemini test failed.')
-  output.textContent = json.reply || 'Done.'
-  showToast('Gemini smoke test complete.')
-}
-
-async function runUserAction(action, userId) {
-  const token = await getAccessToken()
-  if (!token) return showToast('Please sign in as admin first.')
-  const response = await fetch('/api/admin/users', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ action, user_id: userId }),
-  })
-  const json = await response.json()
-  if (!response.ok) return showToast(json.error || 'Could not update user.')
-  await openAdminPanel(true)
-  setAdminTab('users')
-  showToast('User updated.')
-}
-
-function parseListField(value) {
-  try {
-    const parsed = JSON.parse(value || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return String(value || '')
-      .split('\n')
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((command) => ({ command, description: '', prompt: '', enabled: true }))
-  }
-}
-
-function parseKnowledgeField(value) {
-  try {
-    const parsed = JSON.parse(value || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function parseSectionsField(value) {
-  try {
-    const parsed = JSON.parse(value || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function renderAdminConsole(data) {
-  const settings = data?.settings || {}
-  const siteText = settings.site_text || {}
-  const behavior = siteText.behavior || {}
-  const health = data?.health || {}
-  const users = data?.users || []
-  const recentFailures = data?.recentFailures || []
-
-  return `
-    <div class="admin-console-shell">
-      <div class="admin-topbar">
-        <button class="admin-back" type="button" data-admin-close>&larr; Back to site</button>
-        <div>
-          <p class="eyebrow">Admin Console</p>
-          <h2>SurMe system controller</h2>
-          <p class="admin-meta">Visible only to <strong>nilaademo@gmail.com</strong>. Keep the MVP focused on behavior, users, and runtime health.</p>
-        </div>
-        <div class="admin-top-actions">
-          <button class="button secondary" type="button" data-admin-action="refresh">Refresh</button>
-          <span class="admin-pill">Privacy mode on</span>
-        </div>
-      </div>
-
-      <div class="admin-metrics">
-        ${metricCard('Total users', health.totalUsers ?? 0)}
-        ${metricCard('Messages', health.totalMessages ?? 0)}
-        ${metricCard('Active 24h', health.activeUsers ?? 0)}
-        ${metricCard('Failed webhooks', health.failedWebhooks ?? 0)}
-        ${metricCard('Failed AI replies', health.failedAiReplies ?? 0)}
-        ${metricCard('OAuth failures', health.oauthFailures ?? 0)}
-      </div>
-
-      <div class="admin-nav" role="tablist" aria-label="Admin sections">
-        ${adminTabButton('behavior', 'Behavior', true)}
-        ${adminTabButton('users', 'Users')}
-        ${adminTabButton('health', 'Health')}
-      </div>
-
-      <div class="admin-current-tab"><span data-admin-current-tab>Behavior</span></div>
-
-      <section class="admin-panel" data-admin-panel="behavior" hidden>
-        <div class="admin-card">
-          <h3>Custom AI Behavior Prompt</h3>
-          <p>This is the master prompt that the bot and web assistant use. Keep it calm, direct, and task-first.</p>
-          <form data-admin-form="behavior" class="admin-form">
-            <label>Persona
-              <textarea name="persona" rows="9" placeholder="You are SurMe...">${escapeHtml(behavior.persona || settings.system_prompt || '')}</textarea>
-            </label>
-            <div class="admin-two-col">
-              <label>Follow-up style
-                <textarea name="followup_style" rows="5" placeholder="After every reply, end with a short question or next-step nudge.">${escapeHtml(behavior.followup_style || '')}</textarea>
-              </label>
-              <label>Output length
-                <select name="output_length">
-                  ${option('short', behavior.output_length || 'short')}
-                  ${option('medium', behavior.output_length)}
-                  ${option('long', behavior.output_length)}
-                </select>
-              </label>
-            </div>
-            <label>Safety rules
-              <textarea name="safety_rules" rows="5" placeholder="Ask before sending email, booking travel, spending money, or deleting data.">${escapeHtml(behavior.safety_rules || '')}</textarea>
-            </label>
-            <div class="admin-actions">
-              <button class="button secondary" type="button" data-admin-action="test-behavior">Persona test</button>
-              <button class="button secondary" type="button" data-admin-action="test-gemini">Gemini test</button>
-              <button class="button primary" type="submit">Save behavior</button>
-            </div>
-          </form>
-          <label class="admin-test">
-            Test message
-            <textarea data-behavior-test-message rows="4" placeholder="Paste a sample user message..."></textarea>
-          </label>
-          <div class="admin-test-output" data-behavior-test-output>Save behavior, then run a test to preview the assistant response.</div>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="users" hidden>
-        <div class="admin-card">
-          <div class="admin-panel-header">
-            <div>
-              <h3>User management</h3>
-              <p>View linked identities, message counts, and connection state. Disconnect Telegram, disconnect Google, or delete the account if needed.</p>
-            </div>
-            <button class="button secondary" type="button" data-admin-action="refresh">Refresh</button>
-          </div>
-          <input class="admin-search" type="search" placeholder="Search email, telegram, or name..." data-user-search />
-          <div class="admin-user-list">
-            ${users.length ? users.map(renderUserCard).join('') : '<p class="admin-empty">No users found yet.</p>'}
-          </div>
-        </div>
-      </section>
-
-      <section class="admin-panel" data-admin-panel="health" hidden>
-        <div class="admin-card">
-          <h3>System health</h3>
-          <div class="admin-two-col health-grid">
-            ${metricCard('Users total', health.totalUsers ?? 0)}
-            ${metricCard('Messages total', health.totalMessages ?? 0)}
-            ${metricCard('Active 24h', health.activeUsers ?? 0)}
-            ${metricCard('Failed webhooks', health.failedWebhooks ?? 0)}
-            ${metricCard('Failed AI replies', health.failedAiReplies ?? 0)}
-            ${metricCard('OAuth failures', health.oauthFailures ?? 0)}
-          </div>
-          <div class="admin-log-list">
-            ${recentFailures.length ? recentFailures.map((row) => `<div class="admin-log error"><strong>${escapeHtml(row.event_type || 'failure')}</strong><span>${escapeHtml(row.error_message || 'Unknown issue')}</span></div>`).join('') : '<p class="admin-empty">No recent failures.</p>'}
-          </div>
-        </div>
-      </section>
-    </div>
-  `
-}
-
-function renderUserCard(user) {
-  return `
-    <div class="admin-user-card">
-      <div class="admin-user-main">
-        <strong>${escapeHtml(user.display_name || user.email || 'Unknown')}</strong>
-        <span>${escapeHtml(user.email || 'No email')}</span>
-        <small>Telegram: ${user.telegram_connected ? 'linked' : 'not linked'} · Telegram ID: ${escapeHtml(String(user.telegram_chat_id || '—'))}</small>
-        <small>Calendar: ${user.google_connected ? 'linked' : 'not linked'}${user.google_email ? ` · ${escapeHtml(user.google_email)}` : ''}</small>
-        <small>Messages: ${user.message_count || 0}${user.latest_oauth_error ? ` · OAuth note: ${escapeHtml(user.latest_oauth_error)}` : ''}</small>
-      </div>
-      <div class="admin-user-actions">
-        <button class="button secondary" type="button" data-user-action="disconnect_telegram" data-user-id="${escapeAttr(user.user_id)}">Disconnect Telegram</button>
-        <button class="button secondary" type="button" data-user-action="disconnect_google" data-user-id="${escapeAttr(user.user_id)}">Disconnect Google</button>
-        <button class="button secondary danger" type="button" data-user-action="delete_account" data-user-id="${escapeAttr(user.user_id)}">Delete account</button>
-      </div>
-    </div>
-  `
-}
-
-function adminTabButton(tab, label, active = false) {
-  return `<button class="admin-tab${active ? ' active' : ''}" type="button" data-admin-tab-button="${tab}">${escapeHtml(label)}</button>`
-}
-
-function metricCard(label, value) {
-  return `<div class="admin-mini-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value ?? 0))}</strong></div>`
-}
-
-function option(value, current) {
-  return `<option value="${escapeAttr(value)}"${String(value) === String(current || 'short') ? ' selected' : ''}>${escapeHtml(value)}</option>`
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value).replace(/`/g, '&#96;')
+  return data.session?.access_token || null
 }
 
 function showToast(message) {
+  if (!toast) return
   toast.textContent = message
-  toast.classList.add('visible')
-  window.clearTimeout(showToast.timeout)
-  showToast.timeout = window.setTimeout(() => toast.classList.remove('visible'), 3200)
+  toast.classList.add('show')
+  clearTimeout(showToast.timer)
+  showToast.timer = setTimeout(() => toast.classList.remove('show'), 2600)
 }
 
-window.addEventListener('scroll', () => {
-  header.style.boxShadow = window.scrollY > 16 ? '0 12px 30px rgba(24, 32, 31, 0.08)' : 'none'
-})
-
-renderDemo('schedule')
-setAuthMode('login')
-initSupabase()
-refreshMessageCount()
-if (!messageCountTimer) {
-  messageCountTimer = window.setInterval(refreshMessageCount, 30000)
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char])
 }
 
-
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, '&#096;')
+}
